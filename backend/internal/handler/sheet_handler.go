@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/url"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -258,18 +257,9 @@ func (h *SheetHandler) Download(c *gin.Context) {
 	// 把 /uploads/sheets_pdf/xxx.pdf 转成磁盘绝对路径，直接返回文件
 	diskPath := filepath.Join(h.cfg.Upload.Dir, strings.TrimPrefix(file.FilePath, "/uploads/"))
 	ext := strings.ToLower(filepath.Ext(file.FilePath))
-	contentType := "application/octet-stream"
-	switch ext {
-	case ".pdf":
-		contentType = "application/pdf"
-	}
-
 	downloadName := sheet.Title
 	if downloadName == "" {
 		downloadName = "sheet"
 	}
-	c.Header("Content-Type", contentType)
-	encodedName := url.PathEscape(downloadName)
-	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename*=UTF-8''%s%s`, encodedName, ext))
-	c.File(diskPath)
+	c.FileAttachment(diskPath, downloadName+ext)
 }
