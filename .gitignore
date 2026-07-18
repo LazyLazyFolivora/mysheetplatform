@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.DS_Store
+*.local
+.env.local
+.env.*.local
+
+# Sensitive config
+backend/config.yaml
+
+# Build output
+backend/server.exe
+*.exe
+
+# Uploaded files
+backend/uploads/

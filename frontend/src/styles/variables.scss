@@ -1,0 +1,56 @@
+﻿// Warm paper palette
+$primary: #C88D5E;
+$primary-light: #E8C9A6;
+$primary-dark: #A06B42;
+$primary-hover: #B87A4E;
+
+$bg-page: #FBF8F4;
+$bg-card: #FFFFFF;
+$bg-sidebar: #2C2416;
+
+$text-primary: #2C2416;
+$text-secondary: #8B7E6E;
+$text-placeholder: #BFB5A6;
+$text-inverse: #FBF8F4;
+
+$border: #E8E2D8;
+$border-light: #F0EBE2;
+
+$success: #6BAF7B;
+$warning: #D4A351;
+$danger: #C4736E;
+$info: #7A9BBF;
+
+// Spacing scale
+$space-xs: 4px;
+$space-sm: 8px;
+$space-md: 12px;
+$space-lg: 16px;
+$space-xl: 24px;
+$space-2xl: 32px;
+$space-3xl: 48px;
+
+// Border radius
+$radius-sm: 4px;
+$radius-md: 6px;
+$radius-lg: 8px;
+
+// Shadows
+$shadow-sm: 0 1px 2px rgba(44, 36, 22, 0.06);
+$shadow-md: 0 2px 8px rgba(44, 36, 22, 0.08);
+$shadow-lg: 0 4px 16px rgba(44, 36, 22, 0.1);
+
+// Font
+$font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", Roboto, sans-serif;
+$font-size-xs: 12px;
+$font-size-sm: 13px;
+$font-size-base: 14px;
+$font-size-lg: 16px;
+$font-size-xl: 20px;
+$font-size-2xl: 24px;
+$font-size-3xl: 32px;
+
+// Layout
+$header-height: 60px;
+$sidebar-width: 240px;
+$content-max-width: 1200px;

@@ -1,0 +1,53 @@
+﻿@use "./variables" as *;
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: $font-family;
+  color: $text-primary;
+  background-color: $bg-page;
+  line-height: 1.6;
+}
+
+a {
+  color: $primary;
+  text-decoration: none;
+  &:hover { color: $primary-hover; }
+}
+
+h1 { font-size: $font-size-2xl; font-weight: 600; color: $text-primary; }
+h2 { font-size: $font-size-xl; font-weight: 600; }
+h3 { font-size: $font-size-lg; font-weight: 600; }
+
+.page-container {
+  max-width: $content-max-width;
+  margin: 0 auto;
+  padding: $space-xl;
+}
+
+.section-title {
+  font-size: $font-size-xl;
+  font-weight: 600;
+  margin-bottom: $space-lg;
+  color: $text-primary;
+}
+
+.empty-state {
+  text-align: center;
+  padding: $space-3xl;
+  color: $text-secondary;
+}
+
+.skeleton-wrapper {
+  .el-skeleton { margin-bottom: $space-lg; }
+}
