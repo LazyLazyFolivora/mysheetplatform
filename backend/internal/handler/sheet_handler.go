@@ -270,6 +270,6 @@ func (h *SheetHandler) Download(c *gin.Context) {
 	}
 	c.Header("Content-Type", contentType)
 	encodedName := url.PathEscape(downloadName)
-	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s%s"; filename*=UTF-8''%s%s`, encodedName, ext, encodedName, ext))
+	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename*=UTF-8''%s%s`, encodedName, ext))
 	c.File(diskPath)
 }
