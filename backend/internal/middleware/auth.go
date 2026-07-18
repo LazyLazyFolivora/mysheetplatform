@@ -15,13 +15,18 @@ import (
 
 func Auth(cfg *config.Config, db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		tokenStr := ""
 		auth := c.GetHeader("Authorization")
-		if auth == "" || !strings.HasPrefix(auth, "Bearer ") {
+		if auth != "" && strings.HasPrefix(auth, "Bearer ") {
+			tokenStr = strings.TrimPrefix(auth, "Bearer ")
+		}
+		if tokenStr == "" {
+			tokenStr = c.Query("token")
+		}
+		if tokenStr == "" {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, response.Error(401, "未登录"))
 			return
 		}
-
-		tokenStr := strings.TrimPrefix(auth, "Bearer ")
 		claims, err := pkg.ParseJWT(cfg.JWT.Secret, tokenStr)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, response.Error(401, "登录已过期，请重新登录"))

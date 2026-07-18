@@ -15,7 +15,6 @@ import (
 	"github.com/sheet-platform/backend/internal/config"
 	"github.com/sheet-platform/backend/internal/dto/response"
 	"github.com/sheet-platform/backend/internal/model"
-	"github.com/sheet-platform/backend/internal/pkg"
 	"github.com/sheet-platform/backend/internal/repository"
 	"github.com/sheet-platform/backend/internal/service"
 )
@@ -193,17 +192,8 @@ func (h *SheetHandler) Delete(c *gin.Context) {
 func (h *SheetHandler) Download(c *gin.Context) {
 	userIDVal, exists := c.Get("user_id")
 	if !exists {
-		token := c.Query("token")
-		if token == "" {
-			c.JSON(http.StatusUnauthorized, response.Error(401, "请先登录"))
-			return
-		}
-		claims, err := pkg.ParseJWT(h.cfg.JWT.Secret, token)
-		if err != nil {
-			c.JSON(http.StatusUnauthorized, response.Error(401, "登录已过期，请重新登录"))
-			return
-		}
-		userIDVal = claims.UserID
+		c.JSON(http.StatusUnauthorized, response.Error(401, "请先登录"))
+		return
 	}
 
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
