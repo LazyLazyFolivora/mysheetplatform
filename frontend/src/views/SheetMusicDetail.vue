@@ -214,36 +214,15 @@ const handleDownload = async () => {
       { confirmButtonText: '确认下载', cancelButtonText: '取消', type: 'warning' }
     )
     downloading.value = true
-    const response = await sheetMusicApi.download(sheet.value!.id)
-    // responseType='blob' 时拦截器返回原始 AxiosResponse
-    const blob = response.data as Blob
-    const disposition = (response.headers?.['content-disposition'] || '') as string
-    const match = disposition.match(/filename[^;=\n]*=["']?((["])(.*?)\2|[^;=\n"']*)/)
-    const filename = match?.[3] || match?.[1] || `${sheet.value?.title || 'sheet'}.pdf`
-
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = filename
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-    ElMessage.success('下载成功')
+    const token = localStorage.getItem('token') || ''
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
+    const downloadUrl = `${baseUrl}/sheet-music/${sheet.value!.id}/download?token=${encodeURIComponent(token)}`
+    window.open(downloadUrl, '_blank')
+    ElMessage.success('下载已开始，请在浏览器下载列表中查看')
     // 刷新用户积分（下载可能扣了积分）
-    userStore.fetchProfile?.()
+    setTimeout(() => userStore.fetchProfile?.(), 1000)
   } catch (err: any) {
     if (err === 'cancel') return
-    // blob 错误时尝试从 blob 中读业务错误消息
-    if (err?.response?.data instanceof Blob) {
-      try {
-        const text = await (err.response.data as Blob).text()
-        const parsed = JSON.parse(text)
-        if (parsed.message) ElMessage.error(parsed.message)
-      } catch {
-        // 无法解析则保持拦截器的默认提示
-      }
-    }
   } finally {
     downloading.value = false
   }

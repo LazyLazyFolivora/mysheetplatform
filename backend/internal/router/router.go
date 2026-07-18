@@ -75,7 +75,7 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config, logger *zap.Logger) {
 	api.POST("/auth/send-code", authHandler.SendCode)
 	api.GET("/sheet-music", sheetHandler.List)
 	api.GET("/sheet-music/:id", sheetHandler.Detail)
-	api.GET("/sheet-music/:id/download", middleware.Auth(cfg, db), sheetHandler.Download)
+	api.GET("/sheet-music/:id/download", sheetHandler.Download)
 	api.GET("/tags", sheetHandler.ListTags)
 	api.GET("/friend-links", adminHandler.ListPublicFriendLinks)
 	api.POST("/contact-messages", adminHandler.CreateContactMessage)
