@@ -45,4 +45,5 @@ jobs:
           script: |
             cd /path/to/mysheetplatform
             git pull origin main
+            bash deploy.sh build
             bash deploy.sh restart
