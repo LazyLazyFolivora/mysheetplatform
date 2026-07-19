@@ -18,6 +18,12 @@ func NewFileHandler(fileService *service.FileService) *FileHandler {
 	return &FileHandler{fileService: fileService}
 }
 
+func (h *FileHandler) RegisterRoutes(public, auth, admin *gin.RouterGroup) {
+	admin.POST("/sheet-music/upload-pdf", h.UploadSheetPDF)
+	admin.POST("/sheet-music/upload-audio", h.UploadAudio)
+	admin.POST("/upload/image", h.UploadImage)
+}
+
 func (h *FileHandler) UploadSheetPDF(c *gin.Context) {
 	sheetID, err := strconv.ParseUint(c.PostForm("sheet_music_id"), 10, 32)
 	if err != nil {

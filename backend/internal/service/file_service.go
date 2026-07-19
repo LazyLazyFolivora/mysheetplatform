@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 
@@ -24,17 +25,20 @@ type FileService struct {
 	db            *gorm.DB
 }
 
-func NewFileService(
-	sheetFileRepo *repository.SheetFileRepo,
-	cfg *config.Config,
-	logger *zap.Logger,
-	db *gorm.DB,
-) *FileService {
+type FileServiceParams struct {
+	fx.In
+	SheetFileRepo *repository.SheetFileRepo
+	Cfg           *config.Config
+	Logger        *zap.Logger
+	DB            *gorm.DB
+}
+
+func NewFileService(p FileServiceParams) *FileService {
 	return &FileService{
-		sheetFileRepo: sheetFileRepo,
-		cfg:           cfg,
-		logger:        logger,
-		db:            db,
+		sheetFileRepo: p.SheetFileRepo,
+		cfg:           p.Cfg,
+		logger:        p.Logger,
+		db:            p.DB,
 	}
 }
 

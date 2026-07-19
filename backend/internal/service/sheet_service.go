@@ -3,6 +3,7 @@
 import (
 	"errors"
 
+	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 
@@ -11,23 +12,26 @@ import (
 )
 
 type SheetService struct {
-	sheetRepo  *repository.SheetMusicRepo
-	tagRepo    *repository.TagRepo
-	fileRepo   *repository.SheetFileRepo
-	logger     *zap.Logger
+	sheetRepo *repository.SheetMusicRepo
+	tagRepo   *repository.TagRepo
+	fileRepo  *repository.SheetFileRepo
+	logger    *zap.Logger
 }
 
-func NewSheetService(
-	sheetRepo *repository.SheetMusicRepo,
-	tagRepo *repository.TagRepo,
-	fileRepo *repository.SheetFileRepo,
-	logger *zap.Logger,
-) *SheetService {
+type SheetServiceParams struct {
+	fx.In
+	SheetRepo *repository.SheetMusicRepo
+	TagRepo   *repository.TagRepo
+	FileRepo  *repository.SheetFileRepo
+	Logger    *zap.Logger
+}
+
+func NewSheetService(p SheetServiceParams) *SheetService {
 	return &SheetService{
-		sheetRepo: sheetRepo,
-		tagRepo:   tagRepo,
-		fileRepo:  fileRepo,
-		logger:    logger,
+		sheetRepo: p.SheetRepo,
+		tagRepo:   p.TagRepo,
+		fileRepo:  p.FileRepo,
+		logger:    p.Logger,
 	}
 }
 

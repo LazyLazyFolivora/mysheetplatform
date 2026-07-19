@@ -1,4 +1,4 @@
-package main
+package seed
 
 import (
 	"gorm.io/gorm"
@@ -7,8 +7,8 @@ import (
 	"github.com/sheet-platform/backend/internal/model"
 )
 
-// 与原项目 V11__Add_SystemConfig_Table.sql 的默认配置保持一致
-func seedSystemConfigs(db *gorm.DB) error {
+// SystemConfigs 插入默认系统配置，已存在的 key 会被跳过
+func SystemConfigs(db *gorm.DB) error {
 	defaults := []model.SystemConfig{
 		{ConfigKey: "site_name", ConfigVal: "乐谱平台", Remark: "网站名称"},
 		{ConfigKey: "site_description", ConfigVal: "专业的乐谱分享平台", Remark: "网站描述"},

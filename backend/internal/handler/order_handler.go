@@ -21,6 +21,14 @@ func NewOrderHandler(orderService *service.OrderService, cfg *config.Config) *Or
 	return &OrderHandler{orderService: orderService, cfg: cfg}
 }
 
+func (h *OrderHandler) RegisterRoutes(public, auth, admin *gin.RouterGroup) {
+	public.POST("/alipay/notify", h.Notify)
+	public.GET("/alipay/order/status", h.OrderStatus)
+	public.GET("/orders/:order_no/pay", h.Pay)
+	auth.POST("/orders", h.Create)
+	auth.GET("/orders", h.List)
+}
+
 func (h *OrderHandler) Create(c *gin.Context) {
 	userID, _ := c.Get("user_id")
 

@@ -3,6 +3,7 @@
 import (
 	"errors"
 
+	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 
@@ -16,8 +17,15 @@ type PermissionService struct {
 	logger   *zap.Logger
 }
 
-func NewPermissionService(permRepo *repository.PermissionRepo, roleRepo *repository.RoleRepo, logger *zap.Logger) *PermissionService {
-	return &PermissionService{permRepo: permRepo, roleRepo: roleRepo, logger: logger}
+type PermissionServiceParams struct {
+	fx.In
+	PermRepo *repository.PermissionRepo
+	RoleRepo *repository.RoleRepo
+	Logger   *zap.Logger
+}
+
+func NewPermissionService(p PermissionServiceParams) *PermissionService {
+	return &PermissionService{permRepo: p.PermRepo, roleRepo: p.RoleRepo, logger: p.Logger}
 }
 
 type ModuleTreeNode struct {
