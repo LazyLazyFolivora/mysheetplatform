@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"time"
 
+	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -23,8 +24,16 @@ type AuthService struct {
 	db       *gorm.DB
 }
 
-func NewAuthService(userRepo *repository.UserRepo, cfg *config.Config, logger *zap.Logger, db *gorm.DB) *AuthService {
-	return &AuthService{userRepo: userRepo, cfg: cfg, logger: logger, db: db}
+type AuthServiceParams struct {
+	fx.In
+	UserRepo *repository.UserRepo
+	Cfg      *config.Config
+	Logger   *zap.Logger
+	DB       *gorm.DB
+}
+
+func NewAuthService(p AuthServiceParams) *AuthService {
+	return &AuthService{userRepo: p.UserRepo, cfg: p.Cfg, logger: p.Logger, db: p.DB}
 }
 
 type LoginResponse struct {

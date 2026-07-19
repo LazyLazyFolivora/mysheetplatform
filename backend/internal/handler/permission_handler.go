@@ -19,6 +19,25 @@ func NewPermissionHandler(permService *service.PermissionService) *PermissionHan
 	return &PermissionHandler{permService: permService}
 }
 
+func (h *PermissionHandler) RegisterRoutes(public, auth, admin *gin.RouterGroup) {
+	admin.GET("/permissions/tree", h.Tree)
+	admin.POST("/permissions/modules", h.CreateModule)
+	admin.PUT("/permissions/modules/:id", h.UpdateModule)
+	admin.DELETE("/permissions/modules/:id", h.DeleteModule)
+	admin.GET("/permissions/modules/:id/permissions", h.GetModulePermissions)
+	admin.POST("/permissions/modules/:id/permissions", h.AssignModulePermissions)
+	admin.GET("/permissions", h.ListPermissions)
+	admin.POST("/permissions", h.CreatePermission)
+	admin.PUT("/permissions/:id", h.UpdatePermission)
+	admin.DELETE("/permissions/:id", h.DeletePermission)
+	admin.GET("/roles", h.ListRoles)
+	admin.POST("/roles", h.CreateRole)
+	admin.PUT("/roles/:id", h.UpdateRole)
+	admin.DELETE("/roles/:id", h.DeleteRole)
+	admin.GET("/roles/:id/modules", h.GetRoleModules)
+	admin.POST("/roles/:id/modules", h.AssignRoleModules)
+}
+
 func parseIDParam(c *gin.Context) (uint, bool) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {

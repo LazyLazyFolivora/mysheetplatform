@@ -74,6 +74,13 @@ func (h *AuthHandler) Profile(c *gin.Context) {
 	c.JSON(http.StatusOK, response.Success(profile))
 }
 
+func (h *AuthHandler) RegisterRoutes(public, auth, admin *gin.RouterGroup) {
+	public.POST("/auth/login", h.Login)
+	public.POST("/auth/register", h.Register)
+	public.POST("/auth/send-code", h.SendCode)
+	auth.GET("/profile", h.Profile)
+}
+
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req request.RegisterReq
 	if err := c.ShouldBindJSON(&req); err != nil {

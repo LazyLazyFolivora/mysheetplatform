@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/fx"
 	"gorm.io/gorm"
 
 	"github.com/sheet-platform/backend/internal/config"
@@ -19,30 +20,43 @@ import (
 )
 
 type SheetHandler struct {
-	sheetService   *service.SheetService
-	db             *gorm.DB
-	userRepo       *repository.UserRepo
-	sheetFileRepo  *repository.SheetFileRepo
-	dlRecordRepo   *repository.DownloadRecordRepo
-	cfg            *config.Config
+	sheetService  *service.SheetService
+	db            *gorm.DB
+	userRepo      *repository.UserRepo
+	sheetFileRepo *repository.SheetFileRepo
+	dlRecordRepo  *repository.DownloadRecordRepo
+	cfg           *config.Config
 }
 
-func NewSheetHandler(
-	sheetService *service.SheetService,
-	db *gorm.DB,
-	userRepo *repository.UserRepo,
-	sheetFileRepo *repository.SheetFileRepo,
-	dlRecordRepo *repository.DownloadRecordRepo,
-	cfg *config.Config,
-) *SheetHandler {
+type SheetHandlerParams struct {
+	fx.In
+	SheetService *service.SheetService
+	DB           *gorm.DB
+	UserRepo     *repository.UserRepo
+	FileRepo     *repository.SheetFileRepo
+	DLRecordRepo *repository.DownloadRecordRepo
+	Cfg          *config.Config
+}
+
+func NewSheetHandler(p SheetHandlerParams) *SheetHandler {
 	return &SheetHandler{
-		sheetService:  sheetService,
-		db:            db,
-		userRepo:      userRepo,
-		sheetFileRepo: sheetFileRepo,
-		dlRecordRepo:  dlRecordRepo,
-		cfg:           cfg,
+		sheetService:  p.SheetService,
+		db:            p.DB,
+		userRepo:      p.UserRepo,
+		sheetFileRepo: p.FileRepo,
+		dlRecordRepo:  p.DLRecordRepo,
+		cfg:           p.Cfg,
 	}
+}
+
+func (h *SheetHandler) RegisterRoutes(public, auth, admin *gin.RouterGroup) {
+	public.GET("/sheet-music", h.List)
+	public.GET("/sheet-music/:id", h.Detail)
+	auth.GET("/sheet-music/:id/download", h.Download)
+	public.GET("/tags", h.ListTags)
+	admin.POST("/sheet-music", h.Create)
+	admin.PUT("/sheet-music/:id", h.Update)
+	admin.DELETE("/sheet-music/:id", h.Delete)
 }
 
 func (h *SheetHandler) List(c *gin.Context) {

@@ -63,8 +63,6 @@ type EmailConfig struct {
 	Password string `mapstructure:"password"`
 }
 
-var global Config
-
 func Init(configPath string) *Config {
 	v := viper.New()
 	v.SetConfigFile(configPath)
@@ -76,13 +74,10 @@ func Init(configPath string) *Config {
 		zap.L().Fatal("failed to read config", zap.Error(err))
 	}
 
-	if err := v.Unmarshal(&global); err != nil {
+	var cfg Config
+	if err := v.Unmarshal(&cfg); err != nil {
 		zap.L().Fatal("failed to unmarshal config", zap.Error(err))
 	}
 
-	return &global
-}
-
-func Get() *Config {
-	return &global
+	return &cfg
 }

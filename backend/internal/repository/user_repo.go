@@ -6,6 +6,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/sheet-platform/backend/internal/model"
+	"github.com/sheet-platform/backend/internal/pkg"
 )
 
 type UserRepo struct {
@@ -64,6 +65,10 @@ func (r *UserRepo) FindByID(id uint) (*model.User, error) {
 
 func (r *UserRepo) Create(user *model.User) error {
 	return r.db.Create(user).Error
+}
+
+func (r *UserRepo) List(page, pageSize int) ([]model.User, int64, error) {
+	return pkg.Paginate[model.User](r.db, page, pageSize, "created_at DESC")
 }
 
 func (r *UserRepo) ExistsByUsername(username string) (bool, error) {

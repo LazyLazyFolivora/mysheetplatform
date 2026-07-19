@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 
@@ -22,13 +23,22 @@ type OrderService struct {
 	logger    *zap.Logger
 }
 
-func NewOrderService(db *gorm.DB, sheetRepo *repository.SheetMusicRepo, orderRepo *repository.OrderRepo, cfg *config.Config, logger *zap.Logger) *OrderService {
+type OrderServiceParams struct {
+	fx.In
+	DB        *gorm.DB
+	SheetRepo *repository.SheetMusicRepo
+	OrderRepo *repository.OrderRepo
+	Cfg       *config.Config
+	Logger    *zap.Logger
+}
+
+func NewOrderService(p OrderServiceParams) *OrderService {
 	return &OrderService{
-		db:        db,
-		sheetRepo: sheetRepo,
-		orderRepo: orderRepo,
-		cfg:       cfg,
-		logger:    logger,
+		db:        p.DB,
+		sheetRepo: p.SheetRepo,
+		orderRepo: p.OrderRepo,
+		cfg:       p.Cfg,
+		logger:    p.Logger,
 	}
 }
 
