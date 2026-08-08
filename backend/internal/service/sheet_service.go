@@ -1,7 +1,8 @@
-﻿package service
+package service
 
 import (
 	"errors"
+	"sort"
 
 	"go.uber.org/fx"
 	"go.uber.org/zap"
@@ -37,18 +38,18 @@ func NewSheetService(p SheetServiceParams) *SheetService {
 
 type SheetDetail struct {
 	model.SheetMusic
-	Tags     []model.Tag     `json:"tags"`
-	Files    []model.SheetFile `json:"files,omitempty"`
-	Audio    []model.AudioFile `json:"audio,omitempty"`
-	LikeCount int64           `json:"like_count"`
-	IsLiked   bool            `json:"is_liked"`
+	Tags      []model.Tag       `json:"tags"`
+	Files     []model.SheetFile `json:"files,omitempty"`
+	Audio     []model.AudioFile `json:"audio,omitempty"`
+	LikeCount int64             `json:"like_count"`
+	IsLiked   bool              `json:"is_liked"`
 }
 
 type SheetListReq struct {
-	Page     int      `json:"page"`
-	PageSize int      `json:"page_size"`
-	Keyword  string   `json:"keyword"`
-	TagIDs   []uint   `json:"tag_ids,omitempty"`
+	Page     int    `json:"page"`
+	PageSize int    `json:"page_size"`
+	Keyword  string `json:"keyword"`
+	TagIDs   []uint `json:"tag_ids,omitempty"`
 }
 
 type SheetListItem struct {
@@ -147,10 +148,38 @@ func (s *SheetService) ListTags() ([]model.Tag, error) {
 	return s.tagRepo.ListAll()
 }
 
+// normalizePageSync 校验并按时间升序排列曲谱同步点
+func normalizePageSync(points model.PageSyncPoints) (model.PageSyncPoints, error) {
+	if len(points) == 0 {
+		return nil, nil
+	}
+	for _, p := range points {
+		if p.Time < 0 {
+			return nil, errors.New("同步点时间不能为负数")
+		}
+		if p.Page < 1 {
+			return nil, errors.New("同步点页码必须从 1 开始")
+		}
+	}
+	sort.SliceStable(points, func(i, j int) bool { return points[i].Time < points[j].Time })
+	for i := 1; i < len(points); i++ {
+		if points[i].Time == points[i-1].Time {
+			return nil, errors.New("同步点时间不能重复")
+		}
+	}
+	return points, nil
+}
+
 func (s *SheetService) Create(sheet *model.SheetMusic, tagNames []string) error {
 	if sheet.Title == "" {
 		return errors.New("标题不能为空")
 	}
+	pageSync, err := normalizePageSync(sheet.PageSync)
+	if err != nil {
+		return err
+	}
+	sheet.PageSync = pageSync
+
 	if err := s.sheetRepo.Create(sheet); err != nil {
 		return err
 	}
@@ -158,6 +187,12 @@ func (s *SheetService) Create(sheet *model.SheetMusic, tagNames []string) error 
 }
 
 func (s *SheetService) Update(sheet *model.SheetMusic, tagNames []string) error {
+	pageSync, err := normalizePageSync(sheet.PageSync)
+	if err != nil {
+		return err
+	}
+	sheet.PageSync = pageSync
+
 	existing, err := s.sheetRepo.FindByID(sheet.ID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {

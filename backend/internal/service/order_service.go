@@ -1,8 +1,10 @@
-﻿package service
+package service
 
 import (
 	"errors"
 	"fmt"
+	"math"
+	"strconv"
 	"time"
 
 	"go.uber.org/fx"
@@ -79,15 +81,46 @@ func (s *OrderService) ListOrders(userID uint, page, pageSize int) ([]model.Shee
 	return s.orderRepo.ListByUser(userID, page, pageSize)
 }
 
-func (s *OrderService) HandleAlipayNotify(orderNo, tradeNo, status string) error {
+// HandleAlipayNotify 处理支付宝异步通知：验签 → 校验商户/金额 → 幂等更新订单状态。
+// params 是通知里的全部表单参数（含 sign）。
+func (s *OrderService) HandleAlipayNotify(params map[string]string) error {
+	if err := pkg.VerifyAlipayNotify(params, s.cfg.Alipay.AlipayPublicKey); err != nil {
+		s.logger.Warn("alipay notify verify failed",
+			zap.String("out_trade_no", params["out_trade_no"]),
+			zap.Error(err))
+		return errors.New("签名验证失败")
+	}
+
+	if appID := params["app_id"]; appID != "" && appID != s.cfg.Alipay.AppID {
+		return errors.New("app_id 不匹配")
+	}
+
+	tradeStatus := params["trade_status"]
+	if tradeStatus != "TRADE_SUCCESS" && tradeStatus != "TRADE_FINISHED" {
+		// 其他状态（WAIT_BUYER_PAY / TRADE_CLOSED）直接确认，避免支付宝重试
+		return nil
+	}
+
+	orderNo := params["out_trade_no"]
 	order, err := s.orderRepo.GetByOrderNo(orderNo)
 	if err != nil {
 		return errors.New("订单不存在")
 	}
 	if order.Status != "pending" {
+		// 已处理过，幂等返回成功
 		return nil
 	}
-	return s.orderRepo.UpdateStatus(orderNo, status)
+
+	notifyAmount, err := strconv.ParseFloat(params["total_amount"], 64)
+	if err != nil || math.Abs(notifyAmount-order.Amount) > 0.001 {
+		s.logger.Warn("alipay notify amount mismatch",
+			zap.String("out_trade_no", orderNo),
+			zap.String("notify_amount", params["total_amount"]),
+			zap.Float64("order_amount", order.Amount))
+		return errors.New("金额不匹配")
+	}
+
+	return s.orderRepo.MarkPaid(orderNo, params["trade_no"])
 }
 
 func (s *OrderService) GetPayForm(orderNo string, userID uint) (string, error) {

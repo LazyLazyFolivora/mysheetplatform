@@ -15,7 +15,9 @@
 <script setup lang="ts">
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@use "@/styles/variables" as *;
+
 .nav-footer {
   height: 100%;
   display: flex;
@@ -28,17 +30,19 @@
 }
 
 .copyright {
-  color: #999;
-  font-size: 14px;
-}
-.copyright a {
-  color: #999;
-  text-decoration: none;
-  margin: 0 5px;
-  transition: color 0.2s;
-}
-.copyright a:hover {
-  color: #409EFF;
-  text-decoration: underline;
+  color: $text-secondary;
+  font-size: 13px;
+
+  a {
+    color: $text-secondary;
+    text-decoration: none;
+    margin: 0 5px;
+    transition: color $transition-base;
+
+    &:hover {
+      color: $primary-dark;
+      text-decoration: underline;
+    }
+  }
 }
 </style>

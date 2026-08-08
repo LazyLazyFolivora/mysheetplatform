@@ -1,4 +1,4 @@
-﻿package repository
+package repository
 
 import (
 	"time"
@@ -44,11 +44,13 @@ func (r *OrderRepo) ListByUser(userID uint, page, pageSize int) ([]model.SheetOr
 	return orders, total, err
 }
 
-func (r *OrderRepo) UpdateStatus(orderNo, status string) error {
+// MarkPaid 将 pending 订单标记为已支付；WHERE 带 status 条件保证并发重复通知只生效一次
+func (r *OrderRepo) MarkPaid(orderNo, tradeNo string) error {
 	return r.db.Model(&model.SheetOrder{}).
-		Where("order_no = ?", orderNo).
+		Where("order_no = ? AND status = ?", orderNo, "pending").
 		Updates(map[string]interface{}{
-			"status":  status,
-			"paid_at": time.Now(),
+			"status":          "paid",
+			"alipay_trade_no": tradeNo,
+			"paid_at":         time.Now(),
 		}).Error
 }

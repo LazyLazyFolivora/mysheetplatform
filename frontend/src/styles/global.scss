@@ -1,4 +1,4 @@
-﻿@use "./variables" as *;
+@use "./variables" as *;
 
 *, *::before, *::after {
   box-sizing: border-box;
@@ -22,12 +22,19 @@ body {
 a {
   color: $primary;
   text-decoration: none;
+  transition: color $transition-base;
   &:hover { color: $primary-hover; }
 }
 
-h1 { font-size: $font-size-2xl; font-weight: 600; color: $text-primary; }
-h2 { font-size: $font-size-xl; font-weight: 600; }
-h3 { font-size: $font-size-lg; font-weight: 600; }
+h1, h2, h3 {
+  font-family: $font-family-serif;
+  font-weight: 600;
+  color: $text-primary;
+  letter-spacing: 0.02em;
+}
+h1 { font-size: $font-size-2xl; }
+h2 { font-size: $font-size-xl; }
+h3 { font-size: $font-size-lg; }
 
 .page-container {
   max-width: $content-max-width;
@@ -50,4 +57,28 @@ h3 { font-size: $font-size-lg; font-weight: 600; }
 
 .skeleton-wrapper {
   .el-skeleton { margin-bottom: $space-lg; }
+}
+
+// 鼠标点击音符特效（由 utils/clickNotes.ts 生成元素）
+.click-note {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  user-select: none;
+  font-family: $font-family-serif;
+  animation: note-float 1.1s ease-out forwards;
+}
+
+@keyframes note-float {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 0) scale(0.6) rotate(var(--note-rotate, 0deg));
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--note-drift, 0px)), -72px) scale(1.05) rotate(var(--note-rotate, 0deg));
+  }
 }

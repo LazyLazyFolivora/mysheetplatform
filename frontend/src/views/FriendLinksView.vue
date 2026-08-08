@@ -51,15 +51,30 @@ onMounted(() => {
 })
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@use "@/styles/variables" as *;
+
 .friend-links {
   padding: 20px;
+  max-width: $content-max-width;
+  margin: 0 auto;
 }
 .links-card {
   margin-top: 20px;
+  border-color: $border-light;
+  border-radius: $radius-xl;
 }
 .link-card {
   margin-bottom: 20px;
+  border-color: $border-light;
+  border-radius: $radius-lg;
+  transition: transform $transition-base, box-shadow $transition-base, border-color $transition-base;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: $shadow-md;
+    border-color: $primary-light;
+  }
 }
 .link-content {
   display: flex;
@@ -70,6 +85,7 @@ onMounted(() => {
   width: 50px;
   height: 50px;
   object-fit: cover;
+  border-radius: $radius-md;
 }
 .link-info {
   flex: 1;
@@ -78,7 +94,12 @@ onMounted(() => {
   margin: 0;
 }
 .link-info a {
-  color: #409eff;
+  color: $primary;
   text-decoration: none;
+  transition: color $transition-base;
+
+  &:hover {
+    color: $primary-hover;
+  }
 }
 </style>

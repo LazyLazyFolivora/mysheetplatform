@@ -1,4 +1,4 @@
-﻿// Warm paper palette
+// Warm paper palette
 $primary: #C88D5E;
 $primary-light: #E8C9A6;
 $primary-dark: #A06B42;
@@ -34,14 +34,21 @@ $space-3xl: 48px;
 $radius-sm: 4px;
 $radius-md: 6px;
 $radius-lg: 8px;
+$radius-xl: 12px;
 
 // Shadows
 $shadow-sm: 0 1px 2px rgba(44, 36, 22, 0.06);
 $shadow-md: 0 2px 8px rgba(44, 36, 22, 0.08);
 $shadow-lg: 0 4px 16px rgba(44, 36, 22, 0.1);
+$shadow-card-hover: 0 8px 24px rgba(44, 36, 22, 0.12);
+
+// Transition
+$transition-base: 0.2s ease;
 
 // Font
 $font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", Roboto, sans-serif;
+// 标题衬线字体：拉丁字符走 Georgia，中文回退到本机宋体系，无需加载外网字体
+$font-family-serif: Georgia, "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", serif;
 $font-size-xs: 12px;
 $font-size-sm: 13px;
 $font-size-base: 14px;

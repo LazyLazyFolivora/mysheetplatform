@@ -10,6 +10,7 @@ import { useUserStore } from './stores/user'
 
 import '@/styles/global.scss'
 import '@/styles/element-overrides.scss'
+import { initClickNotes } from '@/utils/clickNotes'
 
 const app = createApp(App)
 
@@ -25,5 +26,7 @@ app.use(ElementPlus)
 // Restore user session on boot
 const userStore = useUserStore()
 // initUserInfo is called inside the store constructor automatically
+
+initClickNotes()
 
 app.mount('#app')

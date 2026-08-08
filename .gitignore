@@ -14,3 +14,6 @@ backend/server.exe
 
 # Uploaded files
 backend/uploads/
+.claude/
+.go/
+.agents/
