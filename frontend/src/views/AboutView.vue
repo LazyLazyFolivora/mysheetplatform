@@ -10,6 +10,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import DOMPurify from 'dompurify'
 import { getPublicSystemConfig } from '@/api/system-config'
 
 const content = ref('')
@@ -18,7 +19,7 @@ const loading = ref(true)
 onMounted(async () => {
   try {
     const res = await getPublicSystemConfig('about_us')
-    content.value = res.result?.config_val || ''
+    content.value = DOMPurify.sanitize(res.result?.config_val || '')
   } catch {
     content.value = ''
   } finally {
