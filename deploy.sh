@@ -15,16 +15,14 @@ CONFIG_FILE="$BACKEND_DIR/config.yaml"
 build_backend() {
     echo "=== building backend ==="
     cd "$BACKEND_DIR"
-    go build -o "$BIN" ./cmd/server
+    go build -buildvcs=false -o "$BIN" ./cmd/server
     echo "backend done: $BIN"
 }
 
 build_frontend() {
     echo "=== building frontend ==="
     cd "$FRONTEND_DIR"
-    if [ ! -d "node_modules" ]; then
-        npm install
-    fi
+    npm install
     npm run build
     cp -r "$FRONTEND_DIR/dist" /var/www/sheet-platform/
     chown -R www-data:www-data /var/www/sheet-platform
