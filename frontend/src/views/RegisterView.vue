@@ -208,19 +208,32 @@ const handleRegister = async () => {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@use "@/styles/variables" as *;
+
 .register-container {
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: calc(100vh - 120px);
-  background-color: #f5f7fa;
+  background-color: $bg-page;
   padding: 20px;
 }
 
 .register-card {
   width: 400px;
   margin: 0 auto;
+  border-color: $border-light;
+  border-radius: $radius-xl;
+  box-shadow: $shadow-md;
+
+  :deep(.el-card__header) {
+    border-bottom-color: $border-light;
+  }
+
+  :deep(.el-card__body) {
+    padding: $space-xl;
+  }
 }
 
 .card-header {
@@ -230,7 +243,7 @@ const handleRegister = async () => {
 .card-header h2 {
   margin: 0;
   font-size: 24px;
-  color: #303133;
+  color: $text-primary;
 }
 
 .form-footer {
@@ -239,12 +252,13 @@ const handleRegister = async () => {
 }
 
 .form-footer a {
-  color: #409EFF;
+  color: $primary;
   text-decoration: none;
+  transition: color $transition-base;
 }
 
 .form-footer a:hover {
-  color: #66b1ff;
+  color: $primary-hover;
 }
 
 .code-row {

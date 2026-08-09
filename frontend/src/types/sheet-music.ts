@@ -4,6 +4,12 @@ export interface Tag {
   type?: string
 }
 
+/** 曲谱同步点：播放到 time 秒时翻到第 page 页 */
+export interface PageSyncPoint {
+  time: number
+  page: number
+}
+
 export interface SheetMusic {
   id: number
   title: string
@@ -21,6 +27,8 @@ export interface SheetMusic {
   user_id: number
   created_at: string
   updated_at: string
+  /** 曲谱同步点（可选），为空表示不启用播放翻页同步 */
+  page_sync?: PageSyncPoint[]
 }
 
 export interface SheetFile {
@@ -85,4 +93,5 @@ export interface CreateSheetReq {
   price?: number
   download_points?: number
   tags?: string[]
+  page_sync?: PageSyncPoint[]
 }

@@ -51,14 +51,20 @@ onMounted(() => {
 })
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@use "@/styles/variables" as *;
+
 .profile {
   padding: 20px;
+  max-width: $content-max-width;
+  margin: 0 auto;
 }
 
 .profile-card {
   max-width: 600px;
-  margin: 0 auto;
+  margin: 20px auto 0;
+  border-color: $border-light;
+  border-radius: $radius-xl;
 }
 
 .card-header {

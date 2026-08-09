@@ -7,8 +7,9 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
+	"errors"
 	"fmt"
-	"net/url"
+	"html"
 	"sort"
 	"strings"
 	"time"
@@ -63,6 +64,69 @@ func alipaySign(params map[string]string, privateKeyB64 string) (string, error) 
 	return base64.StdEncoding.EncodeToString(sig), nil
 }
 
+// parseAlipayPublicKey 解析支付宝公钥（兼容纯 base64 和带 PEM 头的格式）
+func parseAlipayPublicKey(keyStr string) (*rsa.PublicKey, error) {
+	clean := strings.NewReplacer(
+		"-----BEGIN PUBLIC KEY-----", "",
+		"-----END PUBLIC KEY-----", "",
+		"\r", "", "\n", "", " ", "",
+	).Replace(keyStr)
+
+	der, err := base64.StdEncoding.DecodeString(clean)
+	if err != nil {
+		return nil, fmt.Errorf("解码支付宝公钥失败: %w", err)
+	}
+	pub, err := x509.ParsePKIXPublicKey(der)
+	if err != nil {
+		return nil, fmt.Errorf("解析支付宝公钥失败: %w", err)
+	}
+	rsaPub, ok := pub.(*rsa.PublicKey)
+	if !ok {
+		return nil, errors.New("支付宝公钥不是 RSA 类型")
+	}
+	return rsaPub, nil
+}
+
+// VerifyAlipayNotify 验证支付宝异步通知的 RSA2 签名。
+// 规则：去掉 sign / sign_type，其余参数按 key 字典序拼成 k=v&k=v，用支付宝公钥验签。
+func VerifyAlipayNotify(params map[string]string, alipayPublicKey string) error {
+	sign := params["sign"]
+	if sign == "" {
+		return errors.New("通知缺少签名")
+	}
+
+	keys := make([]string, 0, len(params))
+	for k := range params {
+		if k == "sign" || k == "sign_type" {
+			continue
+		}
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	parts := make([]string, 0, len(keys))
+	for _, k := range keys {
+		parts = append(parts, k+"="+params[k])
+	}
+	signStr := strings.Join(parts, "&")
+
+	rsaPub, err := parseAlipayPublicKey(alipayPublicKey)
+	if err != nil {
+		return err
+	}
+
+	sigBytes, err := base64.StdEncoding.DecodeString(sign)
+	if err != nil {
+		return fmt.Errorf("解码签名失败: %w", err)
+	}
+
+	hash := sha256.Sum256([]byte(signStr))
+	if err := rsa.VerifyPKCS1v15(rsaPub, crypto.SHA256, hash[:], sigBytes); err != nil {
+		return errors.New("签名验证失败")
+	}
+	return nil
+}
+
 // BuildPayForm 生成支付宝电脑网站支付表单 HTML
 func BuildPayForm(cfg *config.AlipayConfig, outTradeNo, totalAmount, subject, body, sheetID string) (string, error) {
 	bizContent := fmt.Sprintf(
@@ -111,7 +175,5 @@ func BuildPayForm(cfg *config.AlipayConfig, outTradeNo, totalAmount, subject, bo
 }
 
 func escapeHTML(s string) string {
-	escaped := url.QueryEscape(s)
-	escaped = strings.ReplaceAll(escaped, "+", "%20")
-	return escaped
+	return html.EscapeString(s)
 }

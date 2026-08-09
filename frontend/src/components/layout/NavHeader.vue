@@ -49,43 +49,75 @@ const handleLogout = () => {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@use "@/styles/variables" as *;
+
 .nav-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px;
+  padding: 0 $space-xl;
   height: 60px;
-  background-color: #fff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  max-width: $content-max-width;
+  margin: 0 auto;
 }
 
 .logo a {
-  font-size: 24px;
-  font-weight: bold;
-  color: #409EFF;
+  font-family: $font-family-serif;
+  font-size: 22px;
+  font-weight: 600;
+  color: $text-primary;
+  letter-spacing: 0.02em;
   text-decoration: none;
+
+  &:hover {
+    color: $primary-dark;
+  }
 }
 
 .nav-links {
   display: flex;
-  gap: 20px;
+  gap: $space-xl;
 }
 
 .nav-link {
-  color: #606266;
+  position: relative;
+  color: $text-secondary;
   text-decoration: none;
-  font-size: 16px;
-}
+  font-size: 15px;
+  padding: 4px 0;
+  transition: color $transition-base;
 
-.nav-link:hover {
-  color: #409EFF;
+  &::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -4px;
+    width: 0;
+    height: 2px;
+    border-radius: 1px;
+    background-color: $primary;
+    transform: translateX(-50%);
+    transition: width $transition-base;
+  }
+
+  &:hover {
+    color: $text-primary;
+  }
+
+  &.router-link-active {
+    color: $text-primary;
+
+    &::after {
+      width: 18px;
+    }
+  }
 }
 
 .user-actions {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: $space-lg;
 }
 
 .user-info {
@@ -93,10 +125,11 @@ const handleLogout = () => {
   align-items: center;
   gap: 4px;
   cursor: pointer;
-  color: #606266;
-}
+  color: $text-primary;
+  transition: color $transition-base;
 
-.user-info:hover {
-  color: #409EFF;
+  &:hover {
+    color: $primary-dark;
+  }
 }
 </style>

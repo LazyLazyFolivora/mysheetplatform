@@ -168,15 +168,19 @@ onMounted(() => {
 })
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@use "@/styles/variables" as *;
+
 .sheet-music-container {
+  max-width: $content-max-width;
+  margin: 0 auto;
   padding: 20px;
 }
 
 .search-section {
   display: flex;
   gap: 12px;
-  margin-bottom: 20px;
+  margin-bottom: $space-xl;
 }
 
 .search-input {
@@ -196,8 +200,9 @@ onMounted(() => {
 
 .loading-section {
   padding: 20px;
-  background: #fff;
-  border-radius: 4px;
+  background: $bg-card;
+  border: 1px solid $border-light;
+  border-radius: $radius-lg;
   margin-bottom: 20px;
 }
 
@@ -208,22 +213,31 @@ onMounted(() => {
 .sheet-music-card {
   margin-bottom: 20px;
   cursor: pointer;
-  transition: all 0.3s ease;
   display: flex;
   flex-direction: column;
   height: 100%;
-}
+  border-color: $border-light;
+  border-radius: $radius-xl;
+  overflow: hidden;
+  transition: transform $transition-base, box-shadow $transition-base, border-color $transition-base;
 
-.sheet-music-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: $shadow-card-hover;
+    border-color: $primary-light;
+
+    .cover-image {
+      transform: scale(1.03);
+    }
+  }
 }
 
 .cover-image {
   width: 100%;
   height: 200px;
   object-fit: cover;
-  border-bottom: 1px solid #ebeef5;
+  border-bottom: 1px solid $border-light;
+  transition: transform 0.35s ease;
 }
 
 .card-content {
@@ -242,7 +256,7 @@ onMounted(() => {
 
 .sheet-detail {
   margin: 4px 0;
-  color: #606266;
+  color: $text-secondary;
   font-size: 0.9rem;
 }
 
@@ -251,8 +265,15 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: #909399;
+  color: $text-secondary;
   font-size: 0.85rem;
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: $primary-dark;
+  }
 }
 
 .pagination {

@@ -14,6 +14,10 @@ export function getSystemConfigs() {
   return request.get<ApiResponse<SystemConfig[]>>('/admin/system-config')
 }
 
+export function getPublicSystemConfig(key: string) {
+  return request.get<ApiResponse<{ config_key: string; config_val: string }>>(`/system-config/${encodeURIComponent(key)}`)
+}
+
 export function createSystemConfig(key: string, value: string, remark?: string) {
   return request.post<ApiResponse<SystemConfig>>('/admin/system-config', { key, value, remark })
 }

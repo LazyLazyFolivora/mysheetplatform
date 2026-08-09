@@ -27,7 +27,7 @@ func (h *AdminHandler) ListSystemConfigs(c *gin.Context) {
 
 func (h *AdminHandler) UpdateSystemConfig(c *gin.Context) {
 	var req struct {
-		Key    string `json:"key" binding:"required,max=100"`
+		Key    string `json:"key" binding:"required,min=1,max=100"`
 		Value  string `json:"value"`
 		Remark string `json:"remark" binding:"max=200"`
 	}
@@ -54,7 +54,7 @@ func (h *AdminHandler) CreateSystemConfig(c *gin.Context) {
 	}
 	cfg := model.SystemConfig{ConfigKey: req.Key, ConfigVal: req.Value, Remark: req.Remark}
 	if err := h.adminService.CreateSystemConfig(&cfg); err != nil {
-		c.JSON(http.StatusBadRequest, response.Error(400, err.Error()))
+		c.JSON(http.StatusBadRequest, response.Error(400, "创建失败"))
 		return
 	}
 	c.JSON(http.StatusOK, response.Success(cfg))
@@ -71,4 +71,18 @@ func (h *AdminHandler) DeleteSystemConfig(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, response.Success(nil))
+}
+
+func (h *AdminHandler) GetPublicSystemConfig(c *gin.Context) {
+	key := c.Param("key")
+	if key == "" {
+		c.JSON(http.StatusBadRequest, response.Error(400, "参数错误"))
+		return
+	}
+	val, err := h.adminService.GetSystemConfig(key)
+	if err != nil {
+		c.JSON(http.StatusNotFound, response.Error(404, "配置不存在"))
+		return
+	}
+	c.JSON(http.StatusOK, response.Success(gin.H{"config_key": key, "config_val": val}))
 }

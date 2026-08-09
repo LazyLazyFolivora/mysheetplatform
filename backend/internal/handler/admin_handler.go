@@ -16,6 +16,7 @@ func NewAdminHandler(adminService *service.AdminService) *AdminHandler {
 
 func (h *AdminHandler) RegisterRoutes(public, auth, admin *gin.RouterGroup) {
 	public.GET("/friend-links", h.ListPublicFriendLinks)
+	public.GET("/system-config/:key", h.GetPublicSystemConfig)
 	public.POST("/contact-messages", h.CreateContactMessage)
 	h.registerDashboardRoutes(admin)
 	h.registerUserRoutes(admin)

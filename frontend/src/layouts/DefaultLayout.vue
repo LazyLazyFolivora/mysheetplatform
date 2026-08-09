@@ -22,27 +22,33 @@ import NavHeader from '@/components/layout/NavHeader.vue'
 import NavFooter from '@/components/layout/NavFooter.vue'
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@use "@/styles/variables" as *;
+
 .app-container {
   min-height: 100vh;
+  background-color: $bg-page;
 }
 
 .el-header {
-  background-color: #fff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   position: fixed;
   width: 100%;
   z-index: 1000;
+  padding: 0;
+  background-color: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid $border-light;
 }
 
 .el-main {
   margin-top: 60px;
   padding: 20px;
-  background-color: #f5f7fa;
+  background-color: $bg-page;
 }
 
 .el-footer {
-  background-color: #fff;
-  border-top: 1px solid #e6e6e6;
+  background-color: transparent;
+  border-top: 1px solid $border-light;
 }
 </style>

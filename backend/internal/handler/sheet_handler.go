@@ -1,4 +1,4 @@
-﻿package handler
+package handler
 
 import (
 	"errors"
@@ -105,17 +105,18 @@ func (h *SheetHandler) Detail(c *gin.Context) {
 }
 
 type createSheetReq struct {
-	Title          string   `json:"title" binding:"required,max=200"`
-	TrackName      string   `json:"track_name" binding:"max=200"`
-	Composer       string   `json:"composer" binding:"max=100"`
-	Arranger       string   `json:"arranger" binding:"max=100"`
-	Transcriber    string   `json:"transcriber" binding:"max=100"`
-	Description    string   `json:"description"`
-	CoverURL       string   `json:"cover_url" binding:"max=500"`
-	ExternalLink   string   `json:"external_link" binding:"max=500"`
-	Price          float64  `json:"price" binding:"min=0"`
-	DownloadPoints int      `json:"download_points" binding:"min=0"`
-	Tags           []string `json:"tags"`
+	Title          string               `json:"title" binding:"required,max=200"`
+	TrackName      string               `json:"track_name" binding:"max=200"`
+	Composer       string               `json:"composer" binding:"max=100"`
+	Arranger       string               `json:"arranger" binding:"max=100"`
+	Transcriber    string               `json:"transcriber" binding:"max=100"`
+	Description    string               `json:"description"`
+	CoverURL       string               `json:"cover_url" binding:"max=500"`
+	ExternalLink   string               `json:"external_link" binding:"max=500"`
+	Price          float64              `json:"price" binding:"min=0"`
+	DownloadPoints int                  `json:"download_points" binding:"min=0"`
+	Tags           []string             `json:"tags"`
+	PageSync       model.PageSyncPoints `json:"page_sync"`
 }
 
 func (r *createSheetReq) toModel() *model.SheetMusic {
@@ -130,6 +131,7 @@ func (r *createSheetReq) toModel() *model.SheetMusic {
 		ExternalLink:   r.ExternalLink,
 		Price:          r.Price,
 		DownloadPoints: r.DownloadPoints,
+		PageSync:       r.PageSync,
 	}
 }
 

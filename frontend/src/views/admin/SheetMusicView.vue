@@ -115,6 +115,35 @@
           <el-input v-model="form.external_link" placeholder="请输入外部链接" />
         </el-form-item>
 
+        <el-form-item label="曲谱同步">
+          <div class="sync-points">
+            <div class="sync-row" v-for="(point, index) in syncPoints" :key="index">
+              <span class="sync-label">播放到</span>
+              <el-input-number
+                v-model="point.time"
+                :min="0"
+                :precision="1"
+                :step="1"
+                controls-position="right"
+                style="width: 120px"
+              />
+              <span class="sync-label">秒，翻到第</span>
+              <el-input-number
+                v-model="point.page"
+                :min="1"
+                controls-position="right"
+                style="width: 100px"
+              />
+              <span class="sync-label">页</span>
+              <el-button link type="danger" @click="removeSyncPoint(index)">删除</el-button>
+            </div>
+            <el-button size="small" @click="addSyncPoint">添加同步点</el-button>
+            <div class="el-upload__tip">
+              可选。播放音频到指定秒数时，前台乐谱预览自动翻到对应页；不填则不启用同步。
+            </div>
+          </div>
+        </el-form-item>
+
         <el-form-item label="免费版乐谱">
           <div class="file-picker">
             <el-button size="small" @click="freePdfInput?.click()">
@@ -186,7 +215,7 @@ import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { sheetMusicApi } from '@/api/sheet-music'
 import { uploadSheetPDF, uploadAudio, uploadImage } from '@/api/file'
-import type { SheetMusic, CreateSheetReq, Tag, SheetFile } from '@/types/sheet-music'
+import type { SheetMusic, CreateSheetReq, Tag, SheetFile, PageSyncPoint } from '@/types/sheet-music'
 
 const sheets = ref<SheetMusic[]>([])
 const allTags = ref<Tag[]>([])
@@ -229,6 +258,18 @@ const emptyForm = (): CreateSheetReq => ({
   tags: [],
 })
 const form = ref<CreateSheetReq>(emptyForm())
+
+// 曲谱同步点（可选）
+const syncPoints = ref<PageSyncPoint[]>([])
+
+const addSyncPoint = () => {
+  const last = syncPoints.value[syncPoints.value.length - 1]
+  syncPoints.value.push({ time: last ? last.time + 10 : 0, page: last ? last.page + 1 : 1 })
+}
+
+const removeSyncPoint = (index: number) => {
+  syncPoints.value.splice(index, 1)
+}
 
 const staticBaseUrl = import.meta.env.VITE_API_RESOURCE_URL || ''
 const toStaticUrl = (path: string) => {
@@ -299,6 +340,7 @@ const resetFiles = () => {
 const openCreate = () => {
   editingId.value = null
   form.value = emptyForm()
+  syncPoints.value = []
   resetFiles()
   dialogVisible.value = true
 }
@@ -306,6 +348,7 @@ const openCreate = () => {
 const openEdit = async (row: SheetMusic) => {
   editingId.value = row.id
   resetFiles()
+  syncPoints.value = []
   form.value = {
     title: row.title,
     track_name: row.track_name || '',
@@ -327,6 +370,7 @@ const openEdit = async (row: SheetMusic) => {
     const detail = res.result
     if (detail) {
       form.value = { ...form.value, tags: (detail.tags || []).map((t) => t.name) }
+      syncPoints.value = (detail.page_sync || []).map((p) => ({ ...p }))
       const files = detail.files || []
       currentFreeFile.value = files.find((f) => f.file_type !== 'paid') || null
       currentPaidFile.value = files.find((f) => f.file_type === 'paid') || null
@@ -378,6 +422,16 @@ const handleSave = async () => {
     ElMessage.warning('请上传免费版乐谱 PDF')
     return
   }
+
+  // 整理同步点：按时间升序，时间重复的直接拦下
+  const points = [...syncPoints.value].sort((a, b) => a.time - b.time)
+  for (let i = 1; i < points.length; i++) {
+    if (points[i].time === points[i - 1].time) {
+      ElMessage.warning('曲谱同步点的时间不能重复')
+      return
+    }
+  }
+  form.value = { ...form.value, page_sync: points }
 
   try {
     saving.value = true
@@ -465,5 +519,19 @@ onMounted(() => {
   color: #909399;
   font-size: 12px;
   line-height: 1.5;
+}
+.sync-points {
+  width: 100%;
+}
+.sync-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.sync-label {
+  font-size: 13px;
+  color: #606266;
+  white-space: nowrap;
 }
 </style>

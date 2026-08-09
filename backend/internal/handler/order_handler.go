@@ -1,4 +1,4 @@
-﻿package handler
+package handler
 
 import (
 	"net/http"
@@ -118,22 +118,28 @@ func (h *OrderHandler) OrderStatus(c *gin.Context) {
 }
 
 func (h *OrderHandler) Notify(c *gin.Context) {
-	orderNo := c.PostForm("out_trade_no")
-	tradeNo := c.PostForm("trade_no")
-	tradeStatus := c.PostForm("trade_status")
-
-	if orderNo == "" || tradeStatus == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"code": "fail"})
+	if err := c.Request.ParseForm(); err != nil {
+		c.String(http.StatusBadRequest, "fail")
 		return
 	}
 
-	status := "paid"
-	if tradeStatus == "TRADE_SUCCESS" || tradeStatus == "TRADE_FINISHED" {
-		if err := h.orderService.HandleAlipayNotify(orderNo, tradeNo, status); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"code": "fail"})
-			return
+	params := make(map[string]string, len(c.Request.PostForm))
+	for k, v := range c.Request.PostForm {
+		if len(v) > 0 {
+			params[k] = v[0]
 		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{"code": "success"})
+	if params["out_trade_no"] == "" || params["trade_status"] == "" {
+		c.String(http.StatusBadRequest, "fail")
+		return
+	}
+
+	if err := h.orderService.HandleAlipayNotify(params); err != nil {
+		c.String(http.StatusOK, "fail")
+		return
+	}
+
+	// 支付宝要求返回纯文本 success，否则会持续重试通知
+	c.String(http.StatusOK, "success")
 }

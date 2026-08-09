@@ -213,3 +213,12 @@ func (s *AdminService) CreateSystemConfig(cfg *model.SystemConfig) error {
 func (s *AdminService) DeleteSystemConfig(key string) error {
 	return s.sysConfigRepo.Delete(key)
 }
+
+func (s *AdminService) GetSystemConfig(key string) (string, error) {
+	var cfg model.SystemConfig
+	err := s.db.Where("config_key = ?", key).First(&cfg).Error
+	if err != nil {
+		return "", err
+	}
+	return cfg.ConfigVal, nil
+}

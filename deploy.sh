@@ -26,7 +26,9 @@ build_frontend() {
         npm install
     fi
     npm run build
-    echo "frontend done: $FRONTEND_DIR/dist"
+    cp -r "$FRONTEND_DIR/dist" /var/www/sheet-platform/
+    chown -R www-data:www-data /var/www/sheet-platform
+    echo "frontend done: /var/www/sheet-platform"
 }
 
 build() {

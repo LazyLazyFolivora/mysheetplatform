@@ -1,6 +1,6 @@
 <template>
   <div class="audio-player">
-    <audio ref="audioRef" controls style="width: 100%;"></audio>
+    <audio ref="audioRef" controls style="width: 100%;" @timeupdate="handleTimeUpdate"></audio>
   </div>
 </template>
 
@@ -11,6 +11,14 @@ import Hls from 'hls.js'
 const props = defineProps<{
   audioUrl: string
 }>()
+
+const emit = defineEmits<{
+  (e: 'timeupdate', currentTime: number): void
+}>()
+
+const handleTimeUpdate = () => {
+  emit('timeupdate', audioRef.value?.currentTime ?? 0)
+}
 
 const audioRef = ref<HTMLAudioElement | null>(null)
 let hls: Hls | null = null

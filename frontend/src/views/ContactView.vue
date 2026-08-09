@@ -60,12 +60,22 @@ const submitForm = async () => {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@use "@/styles/variables" as *;
+
 .contact {
   padding: 20px;
+  max-width: $content-max-width;
+  margin: 0 auto;
 }
 .contact-card {
   max-width: 600px;
-  margin: 0 auto;
+  margin: 20px auto 0;
+  border-color: $border-light;
+  border-radius: $radius-xl;
+
+  :deep(.el-card__body) {
+    padding: $space-xl;
+  }
 }
 </style>
