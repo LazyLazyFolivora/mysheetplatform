@@ -11,6 +11,8 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
+	"github.com/smartwalle/alipay/v3"
+
 	"github.com/sheet-platform/backend/internal/config"
 	"github.com/sheet-platform/backend/internal/handler"
 	"github.com/sheet-platform/backend/internal/middleware"
@@ -31,6 +33,9 @@ func New(configPath string) *fx.App {
 		}),
 		fx.Provide(newDB),
 		fx.Provide(newEngine),
+		fx.Provide(func(cfg *config.Config) (*alipay.Client, error) {
+			return pkg.NewAlipayClient(&cfg.Alipay)
+		}),
 
 		// ---- repositories ----
 		fx.Provide(

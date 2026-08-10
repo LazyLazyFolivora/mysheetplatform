@@ -20,6 +20,12 @@ func (r *SheetFileRepo) FindBySheetID(sheetMusicID uint) (*model.SheetFile, erro
 	return &file, err
 }
 
+func (r *SheetFileRepo) FindBySheetIDAndType(sheetMusicID uint, fileType string) (*model.SheetFile, error) {
+	var file model.SheetFile
+	err := r.db.Where("sheet_music_id = ? AND file_type = ?", sheetMusicID, fileType).First(&file).Error
+	return &file, err
+}
+
 func (r *SheetFileRepo) ListBySheetID(sheetMusicID uint) ([]model.SheetFile, error) {
 	var files []model.SheetFile
 	err := r.db.Where("sheet_music_id = ?", sheetMusicID).Order("created_at ASC").Find(&files).Error
