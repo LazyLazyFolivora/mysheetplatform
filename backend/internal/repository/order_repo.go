@@ -54,3 +54,19 @@ func (r *OrderRepo) MarkPaid(orderNo, tradeNo string) error {
 			"paid_at":         time.Now(),
 		}).Error
 }
+
+func (r *OrderRepo) HasPaidOrder(userID, sheetMusicID uint) (bool, error) {
+	var count int64
+	err := r.db.Model(&model.SheetOrder{}).
+		Where("user_id = ? AND sheet_music_id = ? AND status = ?", userID, sheetMusicID, "paid").
+		Count(&count).Error
+	return count > 0, err
+}
+
+func (r *OrderRepo) HasPendingOrder(userID, sheetMusicID uint) (bool, error) {
+	var count int64
+	err := r.db.Model(&model.SheetOrder{}).
+		Where("user_id = ? AND sheet_music_id = ? AND status = ?", userID, sheetMusicID, "pending").
+		Count(&count).Error
+	return count > 0, err
+}

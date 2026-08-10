@@ -65,12 +65,11 @@
             :loading="downloading"
             class="download-btn"
           >
-            下载乐谱 (免费版)
+            {{ orderPaid ? '下载高清版' : '下载乐谱 (免费版)' }}
           </el-button>
 
           <el-button
-            v-if="sheet.price > 0"
-            type="success"
+            v-if="sheet.price > 0 && !orderPaid"
             size="large"
             @click="handlePurchase"
             :loading="purchasing"
@@ -78,6 +77,10 @@
           >
             购买高清版 (¥{{ sheet.price.toFixed(2) }})
           </el-button>
+
+          <el-tag v-if="orderPaid" type="success" size="large" class="paid-tag">
+            已购买高清版
+          </el-tag>
         </div>
 
         <!-- 外链部分 -->
@@ -144,7 +147,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, ElCarousel } from 'element-plus'
 import { ZoomIn, ZoomOut } from '@element-plus/icons-vue'
@@ -158,6 +161,9 @@ const ZOOM_MAX = 200
 const ZOOM_STEP = 10
 const ZOOM_DEFAULT = 80
 
+const POLL_INTERVAL = 3000
+const POLL_TIMEOUT = 120000
+
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
@@ -165,9 +171,13 @@ const sheet = ref<SheetDetail | null>(null)
 const loading = ref(true)
 const downloading = ref(false)
 const purchasing = ref(false)
+const orderPaid = ref(false)
+const orderNo = ref('')
 const zoom = ref(ZOOM_DEFAULT)
 const carouselRef = ref<InstanceType<typeof ElCarousel> | null>(null)
 const pageSyncEnabled = ref(true)
+let pollTimer: ReturnType<typeof setInterval> | null = null
+let pollStartTime = 0
 
 const staticBaseUrl = import.meta.env.VITE_API_RESOURCE_URL || ''
 function getStaticUrl(path: string) {
@@ -272,6 +282,41 @@ const handleDownload = async () => {
   }
 }
 
+const startPolling = () => {
+  if (!orderNo.value) return
+  stopPolling()
+  pollStartTime = Date.now()
+  pollTimer = setInterval(async () => {
+    if (Date.now() - pollStartTime > POLL_TIMEOUT) {
+      stopPolling()
+      return
+    }
+    try {
+      const res = await sheetMusicApi.getOrderStatus(orderNo.value)
+      if (res.result === 'paid') {
+        orderPaid.value = true
+        stopPolling()
+        ElMessage.success('支付成功！现在可以下载高清版乐谱了')
+      }
+    } catch {
+      // 继续轮询
+    }
+  }, POLL_INTERVAL)
+}
+
+const stopPolling = () => {
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
+}
+
+const onVisibilityChange = () => {
+  if (document.visibilityState === 'visible' && orderNo.value && !orderPaid.value) {
+    startPolling()
+  }
+}
+
 const handlePurchase = async () => {
   if (!userStore.isLoggedIn) {
     ElMessage.warning('请先登录后再购买')
@@ -288,12 +333,10 @@ const handlePurchase = async () => {
     purchasing.value = true
     const res = await sheetMusicApi.createOrder(sheet.value.id)
     if (res.result) {
+      orderNo.value = res.result.order_no
       ElMessage.success(`订单已创建（单号 ${res.result.order_no}），正在跳转支付宝支付...`)
-      const token = localStorage.getItem('token') || ''
-      const payUrl = import.meta.env.VITE_API_BASE_URL
-        ? `${import.meta.env.VITE_API_BASE_URL}/orders/${res.result.order_no}/pay?token=${encodeURIComponent(token)}`
-        : `/api/orders/${res.result.order_no}/pay?token=${encodeURIComponent(token)}`
-      window.open(payUrl, '_blank')
+      startPolling()
+      window.open(res.result.pay_url, '_blank')
     }
   } catch {
     // 取消或失败（失败提示已由拦截器处理）
@@ -313,6 +356,12 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+  document.addEventListener('visibilitychange', onVisibilityChange)
+})
+
+onUnmounted(() => {
+  stopPolling()
+  document.removeEventListener('visibilitychange', onVisibilityChange)
 })
 </script>
 
@@ -441,6 +490,10 @@ onMounted(async () => {
 .download-btn,
 .purchase-btn {
   min-width: 200px;
+}
+
+.paid-tag {
+  align-self: center;
 }
 
 // 购买按钮换成墨色，与暖纸色系协调（覆盖 el-button success 的绿色）

@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/smartwalle/alipay/v3"
 
 	"github.com/sheet-platform/backend/internal/config"
 	"github.com/sheet-platform/backend/internal/dto/response"
@@ -23,8 +24,8 @@ func NewOrderHandler(orderService *service.OrderService, cfg *config.Config) *Or
 
 func (h *OrderHandler) RegisterRoutes(public, auth, admin *gin.RouterGroup) {
 	public.POST("/alipay/notify", h.Notify)
-	public.GET("/alipay/order/status", h.OrderStatus)
 	public.GET("/orders/:order_no/pay", h.Pay)
+	auth.GET("/alipay/order/status", h.OrderStatus)
 	auth.POST("/orders", h.Create)
 	auth.GET("/orders", h.List)
 }
@@ -45,13 +46,19 @@ func (h *OrderHandler) Create(c *gin.Context) {
 		SheetMusicID: req.SheetMusicID,
 	}
 
-	order, err := h.orderService.CreateOrder(createReq)
+	order, payURL, err := h.orderService.CreateOrder(createReq)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, response.Error(400, err.Error()))
 		return
 	}
 
-	c.JSON(http.StatusOK, response.Success(order))
+	c.JSON(http.StatusOK, response.Success(gin.H{
+		"id":       order.ID,
+		"order_no": order.OrderNo,
+		"amount":   order.Amount,
+		"status":   order.Status,
+		"pay_url":  payURL,
+	}))
 }
 
 func (h *OrderHandler) List(c *gin.Context) {
@@ -93,23 +100,23 @@ func (h *OrderHandler) Pay(c *gin.Context) {
 		return
 	}
 
-	html, err := h.orderService.GetPayForm(orderNo, claims.UserID)
+	payURL, err := h.orderService.GetPayURL(orderNo, claims.UserID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, response.Error(400, err.Error()))
 		return
 	}
 
-	c.Header("Content-Type", "text/html; charset=utf-8")
-	c.String(http.StatusOK, html)
+	c.Redirect(http.StatusFound, payURL)
 }
 
 func (h *OrderHandler) OrderStatus(c *gin.Context) {
+	userID, _ := c.Get("user_id")
 	orderNo := c.Query("order_no")
 	if orderNo == "" {
 		c.JSON(http.StatusBadRequest, response.Error(400, "缺少订单号"))
 		return
 	}
-	status, err := h.orderService.GetOrderStatus(orderNo)
+	status, err := h.orderService.GetOrderStatus(orderNo, userID.(uint))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, response.Error(400, err.Error()))
 		return
@@ -123,23 +130,15 @@ func (h *OrderHandler) Notify(c *gin.Context) {
 		return
 	}
 
-	params := make(map[string]string, len(c.Request.PostForm))
-	for k, v := range c.Request.PostForm {
-		if len(v) > 0 {
-			params[k] = v[0]
-		}
-	}
-
-	if params["out_trade_no"] == "" || params["trade_status"] == "" {
+	if c.Request.PostForm.Get("out_trade_no") == "" || c.Request.PostForm.Get("trade_status") == "" {
 		c.String(http.StatusBadRequest, "fail")
 		return
 	}
 
-	if err := h.orderService.HandleAlipayNotify(params); err != nil {
+	if err := h.orderService.HandleAlipayNotify(c.Request.PostForm); err != nil {
 		c.String(http.StatusOK, "fail")
 		return
 	}
 
-	// 支付宝要求返回纯文本 success，否则会持续重试通知
-	c.String(http.StatusOK, "success")
+	alipay.ACKNotification(c.Writer)
 }

@@ -26,9 +26,12 @@ export const sheetMusicApi = {
   delete: (id: number) => request.delete<ApiResponse<void>>(`/admin/sheet-music/${id}`),
 
   createOrder: (sheetMusicId: number) =>
-    request.post<ApiResponse<{ id: number; order_no: string; amount: number; status: string }>>('/orders', {
+    request.post<ApiResponse<{ id: number; order_no: string; amount: number; status: string; pay_url: string }>>('/orders', {
       sheet_music_id: sheetMusicId,
     }),
+
+  getOrderStatus: (orderNo: string) =>
+    request.get<ApiResponse<string>>('/alipay/order/status', { params: { order_no: orderNo } }),
 
   download: (sheetMusicId: number) =>
     request.get(`/sheet-music/${sheetMusicId}/download`, { responseType: 'blob' }),

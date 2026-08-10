@@ -25,6 +25,7 @@ type SheetHandler struct {
 	userRepo      *repository.UserRepo
 	sheetFileRepo *repository.SheetFileRepo
 	dlRecordRepo  *repository.DownloadRecordRepo
+	orderRepo     *repository.OrderRepo
 	cfg           *config.Config
 }
 
@@ -35,6 +36,7 @@ type SheetHandlerParams struct {
 	UserRepo     *repository.UserRepo
 	FileRepo     *repository.SheetFileRepo
 	DLRecordRepo *repository.DownloadRecordRepo
+	OrderRepo    *repository.OrderRepo
 	Cfg          *config.Config
 }
 
@@ -45,6 +47,7 @@ func NewSheetHandler(p SheetHandlerParams) *SheetHandler {
 		userRepo:      p.UserRepo,
 		sheetFileRepo: p.FileRepo,
 		dlRecordRepo:  p.DLRecordRepo,
+		orderRepo:     p.OrderRepo,
 		cfg:           p.Cfg,
 	}
 }
@@ -217,7 +220,6 @@ func (h *SheetHandler) Download(c *gin.Context) {
 		return
 	}
 	sheetID := uint(id)
-
 	userID := userIDVal.(uint)
 
 	sheet, err := h.sheetService.FindByID(sheetID)
@@ -226,7 +228,36 @@ func (h *SheetHandler) Download(c *gin.Context) {
 		return
 	}
 
-	file, err := h.sheetFileRepo.FindBySheetID(sheetID)
+	// 检查用户是否有已支付订单 — 有则直接返回付费高清文件
+	paid, _ := h.orderRepo.HasPaidOrder(userID, sheetID)
+	if paid {
+		file, err := h.sheetFileRepo.FindBySheetIDAndType(sheetID, "paid")
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				c.JSON(http.StatusNotFound, response.Error(404, "付费文件暂未上传"))
+				return
+			}
+			c.JSON(http.StatusInternalServerError, response.Error(500, "查询文件失败"))
+			return
+		}
+
+		if err := h.sheetFileRepo.IncrementDownload(file.ID); err != nil {
+			c.JSON(http.StatusInternalServerError, response.Error(500, "更新下载次数失败"))
+			return
+		}
+
+		diskPath := filepath.Join(h.cfg.Upload.Dir, strings.TrimPrefix(file.FilePath, "/uploads/"))
+		ext := strings.ToLower(filepath.Ext(file.FilePath))
+		downloadName := sheet.Title
+		if downloadName == "" {
+			downloadName = "sheet"
+		}
+		c.FileAttachment(diskPath, downloadName+ext)
+		return
+	}
+
+	// 免费下载：积分抵扣
+	file, err := h.sheetFileRepo.FindBySheetIDAndType(sheetID, "free")
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, response.Error(404, "该乐谱暂无可下载文件"))
@@ -241,7 +272,6 @@ func (h *SheetHandler) Download(c *gin.Context) {
 		requiredPoints = 0
 	}
 
-	// 积分下载：事务里扣积分、增下载次数、记下载记录
 	err = h.db.Transaction(func(tx *gorm.DB) error {
 		if requiredPoints > 0 {
 			if err := h.userRepo.DeductPoints(userID, requiredPoints); err != nil {
@@ -270,7 +300,6 @@ func (h *SheetHandler) Download(c *gin.Context) {
 		return
 	}
 
-	// 把 /uploads/sheets_pdf/xxx.pdf 转成磁盘绝对路径，直接返回文件
 	diskPath := filepath.Join(h.cfg.Upload.Dir, strings.TrimPrefix(file.FilePath, "/uploads/"))
 	ext := strings.ToLower(filepath.Ext(file.FilePath))
 	downloadName := sheet.Title
