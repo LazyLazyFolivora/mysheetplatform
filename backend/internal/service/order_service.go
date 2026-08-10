@@ -90,6 +90,7 @@ func (s *OrderService) CreateOrder(req *CreateOrderReq) (*model.SheetOrder, stri
 		subject = "乐谱购买"
 	}
 	returnURL := strings.ReplaceAll(s.cfg.Alipay.ReturnUrl, "{id}", fmt.Sprintf("%d", req.SheetMusicID))
+	returnURL = returnURL + "?order_no=" + orderNo
 
 	payURL, err := s.alipayClient.TradePagePay(alipay.TradePagePay{
 		Trade: alipay.Trade{
@@ -175,6 +176,7 @@ func (s *OrderService) GetPayURL(orderNo string, userID uint) (string, error) {
 		subject = "乐谱购买"
 	}
 	returnURL := strings.ReplaceAll(s.cfg.Alipay.ReturnUrl, "{id}", fmt.Sprintf("%d", order.SheetMusicID))
+	returnURL = returnURL + "?order_no=" + orderNo
 
 	payURL, err := s.alipayClient.TradePagePay(alipay.TradePagePay{
 		Trade: alipay.Trade{
@@ -211,6 +213,17 @@ func (s *OrderService) GetOrderStatus(orderNo string, userID uint) (string, erro
 		OutTradeNo: orderNo,
 	})
 	if err != nil {
+		s.logger.Warn("alipay TradeQuery failed",
+			zap.String("order_no", orderNo),
+			zap.Error(err))
+		return order.Status, nil
+	}
+
+	if resp.IsFailure() {
+		s.logger.Warn("alipay TradeQuery returned failure",
+			zap.String("order_no", orderNo),
+			zap.String("code", string(resp.Error.Code)),
+			zap.String("msg", resp.Error.Msg))
 		return order.Status, nil
 	}
 
