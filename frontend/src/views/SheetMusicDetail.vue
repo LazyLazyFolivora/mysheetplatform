@@ -356,6 +356,14 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+
+  // 从支付宝 return_url 回来时，URL 会带上 order_no 参数，自动开始轮询
+  const returnOrderNo = route.query.order_no
+  if (returnOrderNo && typeof returnOrderNo === 'string' && userStore.isLoggedIn) {
+    orderNo.value = returnOrderNo
+    startPolling()
+  }
+
   document.addEventListener('visibilitychange', onVisibilityChange)
 })
 
