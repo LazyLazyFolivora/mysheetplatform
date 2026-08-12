@@ -65,6 +65,10 @@ func (s *OrderService) CreateOrder(req *CreateOrderReq) (*model.SheetOrder, stri
 		return nil, "", errors.New("该乐谱无需购买")
 	}
 
+	if has, _ := s.orderRepo.HasPaidOrder(req.UserID, req.SheetMusicID); has {
+		return nil, "", errors.New("已购买该乐谱，可直接下载")
+	}
+
 	if has, _ := s.orderRepo.HasPendingOrder(req.UserID, req.SheetMusicID); has {
 		return nil, "", errors.New("已有待支付订单，请先完成支付")
 	}

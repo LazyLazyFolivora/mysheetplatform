@@ -104,6 +104,15 @@ func (h *SheetHandler) Detail(c *gin.Context) {
 		return
 	}
 
+	if userIDVal, ok := c.Get("user_id"); ok {
+		if userID, ok := userIDVal.(uint); ok {
+			paid, err := h.orderRepo.HasPaidOrder(userID, uint(id))
+			if err == nil {
+				detail.IsPurchased = paid
+			}
+		}
+	}
+
 	c.JSON(http.StatusOK, response.Success(detail))
 }
 

@@ -65,7 +65,7 @@
             :loading="downloading"
             class="download-btn"
           >
-            {{ orderPaid ? '下载高清版' : '下载乐谱 (免费版)' }}
+            {{ orderPaid ? '下载' : '下载乐谱 (免费版)' }}
           </el-button>
 
           <el-button
@@ -79,7 +79,7 @@
           </el-button>
 
           <el-tag v-if="orderPaid" type="success" size="large" class="paid-tag">
-            已购买高清版
+            已购买 · 可无限下载
           </el-tag>
         </div>
 
@@ -256,25 +256,34 @@ const handleDownload = async () => {
     router.push('/login')
     return
   }
-  if (!freeFile.value) {
+  if (!freeFile.value && !orderPaid.value) {
     ElMessage.warning('暂无可下载的PDF文件')
     return
   }
-  const requiredPoints = sheet.value?.download_points || 0
   try {
-    await ElMessageBox.confirm(
-      `确认下载该乐谱吗？\n所需积分：${requiredPoints} 积分`,
-      '下载确认',
-      { confirmButtonText: '确认下载', cancelButtonText: '取消', type: 'warning' }
-    )
+    if (orderPaid.value) {
+      await ElMessageBox.confirm('确认下载高清版乐谱吗？已购买，无需积分。', '下载确认', {
+        confirmButtonText: '确认下载',
+        cancelButtonText: '取消',
+        type: 'info',
+      })
+    } else {
+      const requiredPoints = sheet.value?.download_points || 0
+      await ElMessageBox.confirm(
+        `确认下载该乐谱吗？\n所需积分：${requiredPoints} 积分`,
+        '下载确认',
+        { confirmButtonText: '确认下载', cancelButtonText: '取消', type: 'warning' }
+      )
+    }
     downloading.value = true
     const token = localStorage.getItem('token') || ''
     const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
     const downloadUrl = `${baseUrl}/sheet-music/${sheet.value!.id}/download?token=${encodeURIComponent(token)}`
     window.open(downloadUrl, '_blank')
     ElMessage.success('下载已开始，请在浏览器下载列表中查看')
-    // 刷新用户积分（下载可能扣了积分）
-    setTimeout(() => userStore.fetchProfile?.(), 1000)
+    if (!orderPaid.value) {
+      setTimeout(() => userStore.fetchProfile?.(), 1000)
+    }
   } catch (err: any) {
     if (err === 'cancel') return
   } finally {
@@ -350,6 +359,7 @@ onMounted(async () => {
     const res = await sheetMusicApi.getDetail(Number(route.params.id))
     if (res.result) {
       sheet.value = res.result
+      orderPaid.value = !!res.result.is_purchased
     }
   } catch {
     // 错误提示已由 request 拦截器统一处理
@@ -504,14 +514,17 @@ onUnmounted(() => {
   align-self: center;
 }
 
-// 购买按钮换成墨色，与暖纸色系协调（覆盖 el-button success 的绿色）
+// 购买按钮：深色底必须配浅色字，否则看不见
 .purchase-btn {
   --el-button-bg-color: #{$text-primary};
   --el-button-border-color: #{$text-primary};
+  --el-button-text-color: #{$text-inverse};
   --el-button-hover-bg-color: #4A3D2A;
   --el-button-hover-border-color: #4A3D2A;
+  --el-button-hover-text-color: #{$text-inverse};
   --el-button-active-bg-color: #{$text-primary};
   --el-button-active-border-color: #{$text-primary};
+  --el-button-active-text-color: #{$text-inverse};
 }
 
 .external-frame {
@@ -540,6 +553,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  color: $text-primary;
 }
 
 .label {
