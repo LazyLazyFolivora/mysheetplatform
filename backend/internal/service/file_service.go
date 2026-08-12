@@ -43,9 +43,18 @@ func NewFileService(p FileServiceParams) *FileService {
 }
 
 func (s *FileService) UploadSheetPDF(sheetMusicID uint, fileType string, file *multipart.FileHeader) (*model.SheetFile, error) {
+	if fileType != "free" && fileType != "paid" {
+		return nil, errors.New("file_type 只能是 free 或 paid")
+	}
+
 	saved, err := pkg.SaveUploadedFile(file, s.cfg.Upload.Dir, pkg.FileTypeSheetPDF, s.cfg.Upload.MaxSize)
 	if err != nil {
 		return nil, err
+	}
+
+	// 同类型只保留最新一份，避免历史错误数据（例如全被标成 free）干扰下载
+	if err := s.sheetFileRepo.SoftDeleteBySheetIDAndType(sheetMusicID, fileType); err != nil {
+		return nil, fmt.Errorf("清理旧文件记录失败: %w", err)
 	}
 
 	sheetFile := &model.SheetFile{
@@ -60,6 +69,13 @@ func (s *FileService) UploadSheetPDF(sheetMusicID uint, fileType string, file *m
 	if err := s.sheetFileRepo.Create(sheetFile); err != nil {
 		return nil, fmt.Errorf("保存乐谱文件记录失败: %w", err)
 	}
+
+	s.logger.Info("sheet pdf uploaded",
+		zap.Uint("sheet_music_id", sheetMusicID),
+		zap.String("file_type", fileType),
+		zap.String("file_name", saved.FileName),
+		zap.Uint("file_id", sheetFile.ID),
+	)
 
 	// 异步把 PDF 切分成逐页图片，完成后回填 image_folder 和 page_count
 	if fileType == "free" {

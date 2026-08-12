@@ -1,6 +1,7 @@
 import request from '@/utils/request'
 import type { SheetListParams, SheetListResp, SheetDetail, SheetMusic, CreateSheetReq, Tag } from '@/types/sheet-music'
 import type { ApiResponse } from '@/types/api'
+import { downloadAuthBlob } from '@/utils/download'
 
 export const sheetMusicApi = {
   getList: (params: SheetListParams) => {
@@ -33,6 +34,11 @@ export const sheetMusicApi = {
   getOrderStatus: (orderNo: string) =>
     request.get<ApiResponse<string>>('/alipay/order/status', { params: { order_no: orderNo } }),
 
-  download: (sheetMusicId: number) =>
-    request.get(`/sheet-music/${sheetMusicId}/download`, { responseType: 'blob' }),
+  /** 鉴权后拉取免费版 PDF 字节流并触发浏览器下载 */
+  downloadFree: (sheetMusicId: number) =>
+    downloadAuthBlob(`/sheet-music/${sheetMusicId}/download/free`, 'sheet_免费版.pdf'),
+
+  /** 鉴权后拉取高清版 PDF 字节流并触发浏览器下载（需已购买） */
+  downloadPaid: (sheetMusicId: number) =>
+    downloadAuthBlob(`/sheet-music/${sheetMusicId}/download/paid`, 'sheet_高清版.pdf'),
 }

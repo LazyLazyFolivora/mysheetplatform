@@ -150,7 +150,7 @@
               {{ editingId ? '替换免费版' : '选择免费版 PDF' }}
             </el-button>
             <span v-if="freePdfFile" class="file-name">{{ freePdfFile.name }}</span>
-            <span v-else-if="currentFreeFile" class="file-current">当前：{{ currentFreeFile.file_name }}</span>
+            <span v-else-if="currentFreeFile" class="file-current">当前：已上传免费版</span>
             <input ref="freePdfInput" type="file" accept=".pdf" style="display: none" @change="onPickFreePdf" />
           </div>
           <div class="el-upload__tip">免费版 PDF 文件，且不超过 50MB</div>
@@ -162,7 +162,7 @@
               {{ editingId ? '替换付费版' : '选择付费版 PDF' }}
             </el-button>
             <span v-if="paidPdfFile" class="file-name">{{ paidPdfFile.name }}</span>
-            <span v-else-if="currentPaidFile" class="file-current">当前：{{ currentPaidFile.file_name }}</span>
+            <span v-else-if="currentPaidFile" class="file-current">当前：已上传付费版</span>
             <input ref="paidPdfInput" type="file" accept=".pdf" style="display: none" @change="onPickPaidPdf" />
           </div>
           <div class="el-upload__tip">付费版 PDF 文件（高清版），且不超过 50MB</div>
@@ -372,8 +372,11 @@ const openEdit = async (row: SheetMusic) => {
       form.value = { ...form.value, tags: (detail.tags || []).map((t) => t.name) }
       syncPoints.value = (detail.page_sync || []).map((p) => ({ ...p }))
       const files = detail.files || []
-      currentFreeFile.value = files.find((f) => f.file_type === 'free') || null
-      currentPaidFile.value = files.find((f) => f.file_type === 'paid') || null
+      currentFreeFile.value =
+        detail.has_free_file || files.some((f) => f.file_type === 'free')
+          ? ({ file_type: 'free' } as any)
+          : null
+      currentPaidFile.value = detail.has_paid_file ? ({ file_type: 'paid' } as any) : null
       const audio = detail.audio?.[0]
       currentAudioUrl.value = audio ? toStaticUrl(audio.hls_url || audio.original_url) : ''
     }

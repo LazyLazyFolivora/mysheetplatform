@@ -80,6 +80,8 @@ export interface SheetDetail extends SheetMusic {
   like_count: number
   is_liked: boolean
   is_purchased: boolean
+  has_free_file: boolean
+  has_paid_file: boolean
 }
 
 export interface CreateSheetReq {

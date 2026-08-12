@@ -36,8 +36,6 @@
               </el-carousel-item>
             </el-carousel>
           </template>
-          <!-- 图片未生成时回退到 PDF 内嵌预览 -->
-          <iframe v-else-if="freePdfUrl" :src="freePdfUrl" class="pdf-frame" title="乐谱预览"></iframe>
           <el-empty v-else description="暂无乐谱预览" />
         </div>
 
@@ -56,26 +54,28 @@
           <el-empty v-else description="暂无试听音频" />
         </div>
 
-        <!-- 下载/购买按钮 -->
+        <!-- 下载/购买按钮：免费、付费两个独立接口 -->
         <div class="download-section">
           <el-button
             type="primary"
             size="large"
-            @click="handleDownload"
-            :loading="downloading"
+            @click="handleDownloadFree"
+            :loading="downloadingFree"
+            :disabled="!sheet.has_free_file"
             class="download-btn"
           >
-            {{ orderPaid ? '下载' : '下载乐谱 (免费版)' }}
+            下载免费版
           </el-button>
 
           <el-button
-            v-if="sheet.price > 0 && !orderPaid"
+            v-if="sheet.price > 0"
             size="large"
-            @click="handlePurchase"
-            :loading="purchasing"
+            @click="orderPaid ? handleDownloadPaid() : handlePurchase()"
+            :loading="downloadingPaid || purchasing"
+            :disabled="orderPaid && !sheet.has_paid_file"
             class="purchase-btn"
           >
-            购买高清版 (¥{{ sheet.price.toFixed(2) }})
+            {{ orderPaid ? '下载高清版' : `购买高清版 (¥${sheet.price.toFixed(2)})` }}
           </el-button>
 
           <el-tag v-if="orderPaid" type="success" size="large" class="paid-tag">
@@ -169,7 +169,8 @@ const router = useRouter()
 const userStore = useUserStore()
 const sheet = ref<SheetDetail | null>(null)
 const loading = ref(true)
-const downloading = ref(false)
+const downloadingFree = ref(false)
+const downloadingPaid = ref(false)
 const purchasing = ref(false)
 const orderPaid = ref(false)
 const orderNo = ref('')
@@ -187,8 +188,6 @@ function getStaticUrl(path: string) {
 }
 
 const freeFile = computed(() => sheet.value?.files?.find((f) => f.file_type === 'free') || null)
-
-const freePdfUrl = computed(() => (freeFile.value ? getStaticUrl(freeFile.value.file_path) : ''))
 
 const sheetImages = computed(() => {
   const file = freeFile.value
@@ -250,47 +249,56 @@ const onAudioTimeUpdate = (currentTime: number) => {
   carouselRef.value?.setActiveItem(index)
 }
 
-const handleDownload = async () => {
+const handleDownloadFree = async () => {
   if (!userStore.isLoggedIn) {
     ElMessage.warning('请先登录后再下载')
     router.push('/login')
     return
   }
-  if (!orderPaid.value && !freeFile.value) {
-    ElMessage.warning('暂无可下载的PDF文件')
+  if (!sheet.value?.has_free_file) {
+    ElMessage.warning('暂无免费版文件')
     return
   }
-  const version = orderPaid.value ? 'paid' : 'free'
   try {
-    if (version === 'paid') {
-      await ElMessageBox.confirm('确认下载高清版乐谱吗？已购买，无需积分。', '下载确认', {
-        confirmButtonText: '确认下载',
-        cancelButtonText: '取消',
-        type: 'info',
-      })
-    } else {
-      const requiredPoints = sheet.value?.download_points || 0
-      await ElMessageBox.confirm(
-        `确认下载免费版乐谱吗？\n所需积分：${requiredPoints} 积分`,
-        '下载确认',
-        { confirmButtonText: '确认下载', cancelButtonText: '取消', type: 'warning' }
-      )
-    }
-    downloading.value = true
-    const token = localStorage.getItem('token') || ''
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
-    const downloadUrl =
-      `${baseUrl}/sheet-music/${sheet.value!.id}/download` +
-      `?version=${version}&token=${encodeURIComponent(token)}`
-    window.open(downloadUrl, '_blank')
-    ElMessage.success('下载已开始，请在浏览器下载列表中查看')
-    if (version === 'free') {
-      setTimeout(() => userStore.fetchProfile?.(), 1000)
-    }
+    const requiredPoints = sheet.value.download_points || 0
+    await ElMessageBox.confirm(
+      `确认下载免费版乐谱吗？\n所需积分：${requiredPoints} 积分`,
+      '下载确认',
+      { confirmButtonText: '确认下载', cancelButtonText: '取消', type: 'warning' }
+    )
+    downloadingFree.value = true
+    await sheetMusicApi.downloadFree(sheet.value.id)
+    ElMessage.success('下载已开始')
+    setTimeout(() => userStore.fetchProfile?.(), 1000)
   } catch (err: any) {
-    if (err === 'cancel') return
+    if (err === 'cancel' || err === 'close') return
+    ElMessage.error(err?.message || '下载失败')
   } finally {
-    downloading.value = false
+    downloadingFree.value = false
+  }
+}
+
+const handleDownloadPaid = async () => {
+  if (!userStore.isLoggedIn) {
+    ElMessage.warning('请先登录后再下载')
+    router.push('/login')
+    return
+  }
+  if (!sheet.value) return
+  try {
+    await ElMessageBox.confirm('确认下载高清版乐谱吗？已购买，无需积分。', '下载确认', {
+      confirmButtonText: '确认下载',
+      cancelButtonText: '取消',
+      type: 'info',
+    })
+    downloadingPaid.value = true
+    await sheetMusicApi.downloadPaid(sheet.value.id)
+    ElMessage.success('下载已开始')
+  } catch (err: any) {
+    if (err === 'cancel' || err === 'close') return
+    ElMessage.error(err?.message || '下载失败')
+  } finally {
+    downloadingPaid.value = false
   }
 }
 
