@@ -1,25 +1,25 @@
-// Warm paper palette
-$primary: #C88D5E;
+// Warm paper palette — higher contrast for readable text
+$primary: #A86B3C;
 $primary-light: #E8C9A6;
-$primary-dark: #A06B42;
-$primary-hover: #B87A4E;
+$primary-dark: #8A5530;
+$primary-hover: #965F35;
 
 $bg-page: #FBF8F4;
 $bg-card: #FFFFFF;
 $bg-sidebar: #2C2416;
 
-$text-primary: #2C2416;
-$text-secondary: #8B7E6E;
-$text-placeholder: #BFB5A6;
-$text-inverse: #FBF8F4;
+$text-primary: #1F1810;
+$text-secondary: #5C5348;
+$text-placeholder: #8B8074;
+$text-inverse: #FFFFFF;
 
-$border: #E8E2D8;
-$border-light: #F0EBE2;
+$border: #E0D8CC;
+$border-light: #EDE6DB;
 
-$success: #6BAF7B;
-$warning: #D4A351;
-$danger: #C4736E;
-$info: #7A9BBF;
+$success: #3D8B50;
+$warning: #B8860B;
+$danger: #B54A45;
+$info: #4A7AA8;
 
 // Spacing scale
 $space-xs: 4px;

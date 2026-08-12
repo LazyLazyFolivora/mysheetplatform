@@ -79,6 +79,7 @@ export interface SheetDetail extends SheetMusic {
   audio?: AudioFile[]
   like_count: number
   is_liked: boolean
+  is_purchased: boolean
 }
 
 export interface CreateSheetReq {

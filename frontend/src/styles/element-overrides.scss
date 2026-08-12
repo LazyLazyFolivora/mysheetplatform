@@ -3,11 +3,11 @@
 // 全局覆盖 Element Plus 主题变量，让 select / checkbox / tag / pagination 等组件不再露出默认蓝
 :root {
   --el-color-primary: #{$primary};
-  --el-color-primary-light-3: #D6AA86;
-  --el-color-primary-light-5: #E3C6AE;
-  --el-color-primary-light-7: #EFDDCF;
-  --el-color-primary-light-8: #F4E8DF;
-  --el-color-primary-light-9: #FAF3EF;
+  --el-color-primary-light-3: #C48A5C;
+  --el-color-primary-light-5: #D4A87E;
+  --el-color-primary-light-7: #E5C9AE;
+  --el-color-primary-light-8: #EFDCCB;
+  --el-color-primary-light-9: #F7EEE6;
   --el-color-primary-dark-2: #{$primary-dark};
 
   --el-color-success: #{$success};
@@ -41,10 +41,13 @@
 .el-button--primary {
   --el-button-bg-color: #{$primary};
   --el-button-border-color: #{$primary};
+  --el-button-text-color: #{$text-inverse};
   --el-button-hover-bg-color: #{$primary-hover};
   --el-button-hover-border-color: #{$primary-hover};
+  --el-button-hover-text-color: #{$text-inverse};
   --el-button-active-bg-color: #{$primary-dark};
   --el-button-active-border-color: #{$primary-dark};
+  --el-button-active-text-color: #{$text-inverse};
 }
 
 .el-card {
@@ -85,6 +88,12 @@
   --el-tag-bg-color: #FAF3EF;
   --el-tag-border-color: #EFDDCF;
   --el-tag-text-color: #{$primary-dark};
+}
+
+.el-tag--success {
+  --el-tag-bg-color: #E8F5EC;
+  --el-tag-border-color: #B7DFC2;
+  --el-tag-text-color: #{$success};
 }
 
 .el-empty__description p {

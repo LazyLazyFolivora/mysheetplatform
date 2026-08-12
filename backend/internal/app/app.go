@@ -144,7 +144,7 @@ func setupRoutes(
 	api := engine.Group("/api")
 	api.Use(middleware.IPBan(db))
 
-	public := api.Group("")
+	public := api.Group("", middleware.OptionalAuth(cfg, db))
 	auth := api.Group("", middleware.Auth(cfg, db))
 	admin := api.Group("/admin", middleware.AdminAuth(cfg, db))
 

@@ -51,6 +51,38 @@ func Auth(cfg *config.Config, db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
+// OptionalAuth 有合法 token 时写入 user_id，无 token / 无效则放行（不拦截）。
+func OptionalAuth(cfg *config.Config, db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		tokenStr := ""
+		auth := c.GetHeader("Authorization")
+		if auth != "" && strings.HasPrefix(auth, "Bearer ") {
+			tokenStr = strings.TrimPrefix(auth, "Bearer ")
+		}
+		if tokenStr == "" {
+			tokenStr = c.Query("token")
+		}
+		if tokenStr == "" {
+			c.Next()
+			return
+		}
+		claims, err := pkg.ParseJWT(cfg.JWT.Secret, tokenStr)
+		if err != nil {
+			c.Next()
+			return
+		}
+		var user model.User
+		if err := db.Select("status").First(&user, claims.UserID).Error; err != nil || user.Status != 1 {
+			c.Next()
+			return
+		}
+		c.Set("user_id", claims.UserID)
+		c.Set("username", claims.Username)
+		c.Set("role_id", claims.RoleID)
+		c.Next()
+	}
+}
+
 func AdminAuth(cfg *config.Config, db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		auth := c.GetHeader("Authorization")
