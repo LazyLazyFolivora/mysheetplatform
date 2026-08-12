@@ -40,6 +40,11 @@ func (r *SheetFileRepo) ListAudioBySheetID(sheetMusicID uint) ([]model.AudioFile
 	return files, err
 }
 
+func (r *SheetFileRepo) SoftDeleteBySheetIDAndType(sheetMusicID uint, fileType string) error {
+	return r.db.Where("sheet_music_id = ? AND file_type = ?", sheetMusicID, fileType).
+		Delete(&model.SheetFile{}).Error
+}
+
 func (r *SheetFileRepo) Create(file *model.SheetFile) error {
 	return r.db.Create(file).Error
 }

@@ -42,7 +42,11 @@ func (h *FileHandler) UploadSheetPDF(c *gin.Context) {
 		return
 	}
 
-	fileType := c.DefaultPostForm("file_type", "free")
+	fileType := c.PostForm("file_type")
+	if fileType == "" {
+		c.JSON(http.StatusBadRequest, response.Error(400, "请指定 file_type（free 或 paid）"))
+		return
+	}
 	if fileType != "free" && fileType != "paid" {
 		c.JSON(http.StatusBadRequest, response.Error(400, "file_type 只能是 free 或 paid"))
 		return
