@@ -22,7 +22,9 @@ func (r *SheetFileRepo) FindBySheetID(sheetMusicID uint) (*model.SheetFile, erro
 
 func (r *SheetFileRepo) FindBySheetIDAndType(sheetMusicID uint, fileType string) (*model.SheetFile, error) {
 	var file model.SheetFile
-	err := r.db.Where("sheet_music_id = ? AND file_type = ?", sheetMusicID, fileType).First(&file).Error
+	err := r.db.Where("sheet_music_id = ? AND file_type = ?", sheetMusicID, fileType).
+		Order("id DESC").
+		First(&file).Error
 	return &file, err
 }
 

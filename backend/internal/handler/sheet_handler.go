@@ -104,13 +104,26 @@ func (h *SheetHandler) Detail(c *gin.Context) {
 		return
 	}
 
+	purchased := false
 	if userIDVal, ok := c.Get("user_id"); ok {
 		if userID, ok := userIDVal.(uint); ok {
 			paid, err := h.orderRepo.HasPaidOrder(userID, uint(id))
 			if err == nil {
-				detail.IsPurchased = paid
+				purchased = paid
 			}
 		}
+	}
+	detail.IsPurchased = purchased
+
+	// 未购买时不返回付费文件路径，避免前端误用/泄露高清版
+	if !purchased && len(detail.Files) > 0 {
+		filtered := make([]model.SheetFile, 0, len(detail.Files))
+		for _, f := range detail.Files {
+			if f.FileType != "paid" {
+				filtered = append(filtered, f)
+			}
+		}
+		detail.Files = filtered
 	}
 
 	c.JSON(http.StatusOK, response.Success(detail))
@@ -237,9 +250,24 @@ func (h *SheetHandler) Download(c *gin.Context) {
 		return
 	}
 
-	// 检查用户是否有已支付订单 — 有则直接返回付费高清文件
-	paid, _ := h.orderRepo.HasPaidOrder(userID, sheetID)
-	if paid {
+	// version=free|paid，默认 free；绝不能因已购买就把免费请求升级成付费文件
+	version := strings.ToLower(c.DefaultQuery("version", "free"))
+	if version != "free" && version != "paid" {
+		c.JSON(http.StatusBadRequest, response.Error(400, "version 只能是 free 或 paid"))
+		return
+	}
+
+	if version == "paid" {
+		paid, err := h.orderRepo.HasPaidOrder(userID, sheetID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, response.Error(500, "查询订单失败"))
+			return
+		}
+		if !paid {
+			c.JSON(http.StatusForbidden, response.Error(403, "请先购买高清版"))
+			return
+		}
+
 		file, err := h.sheetFileRepo.FindBySheetIDAndType(sheetID, "paid")
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -255,17 +283,11 @@ func (h *SheetHandler) Download(c *gin.Context) {
 			return
 		}
 
-		diskPath := filepath.Join(h.cfg.Upload.Dir, strings.TrimPrefix(file.FilePath, "/uploads/"))
-		ext := strings.ToLower(filepath.Ext(file.FilePath))
-		downloadName := sheet.Title
-		if downloadName == "" {
-			downloadName = "sheet"
-		}
-		c.FileAttachment(diskPath, downloadName+ext)
+		h.serveSheetFile(c, sheet.Title, file.FilePath)
 		return
 	}
 
-	// 免费下载：积分抵扣
+	// 免费版：始终返回 free 文件，与是否已购买无关
 	file, err := h.sheetFileRepo.FindBySheetIDAndType(sheetID, "free")
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -281,11 +303,21 @@ func (h *SheetHandler) Download(c *gin.Context) {
 		requiredPoints = 0
 	}
 
+	// 已购买高清版时，免费版下载也不再扣积分
+	skipPoints := false
+	if requiredPoints > 0 {
+		if paid, _ := h.orderRepo.HasPaidOrder(userID, sheetID); paid {
+			skipPoints = true
+		}
+	}
+
 	err = h.db.Transaction(func(tx *gorm.DB) error {
-		if requiredPoints > 0 {
+		pointsSpent := 0
+		if requiredPoints > 0 && !skipPoints {
 			if err := h.userRepo.DeductPoints(userID, requiredPoints); err != nil {
 				return fmt.Errorf("积分不足，需要 %d 积分", requiredPoints)
 			}
+			pointsSpent = requiredPoints
 		}
 
 		if err := h.sheetFileRepo.IncrementDownload(file.ID); err != nil {
@@ -296,7 +328,7 @@ func (h *SheetHandler) Download(c *gin.Context) {
 			UserID:       userID,
 			SheetFileID:  file.ID,
 			SheetMusicID: sheetID,
-			PointsSpent:  requiredPoints,
+			PointsSpent:  pointsSpent,
 		}
 		if err := h.dlRecordRepo.Create(record); err != nil {
 			return fmt.Errorf("记录下载失败: %w", err)
@@ -309,9 +341,13 @@ func (h *SheetHandler) Download(c *gin.Context) {
 		return
 	}
 
-	diskPath := filepath.Join(h.cfg.Upload.Dir, strings.TrimPrefix(file.FilePath, "/uploads/"))
-	ext := strings.ToLower(filepath.Ext(file.FilePath))
-	downloadName := sheet.Title
+	h.serveSheetFile(c, sheet.Title, file.FilePath)
+}
+
+func (h *SheetHandler) serveSheetFile(c *gin.Context, title, filePath string) {
+	diskPath := filepath.Join(h.cfg.Upload.Dir, strings.TrimPrefix(filePath, "/uploads/"))
+	ext := strings.ToLower(filepath.Ext(filePath))
+	downloadName := title
 	if downloadName == "" {
 		downloadName = "sheet"
 	}
