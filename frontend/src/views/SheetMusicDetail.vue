@@ -186,7 +186,7 @@ function getStaticUrl(path: string) {
   return staticBaseUrl.replace(/\/$/, '') + path
 }
 
-const freeFile = computed(() => sheet.value?.files?.find((f) => f.file_type !== 'paid') || null)
+const freeFile = computed(() => sheet.value?.files?.find((f) => f.file_type === 'free') || null)
 
 const freePdfUrl = computed(() => (freeFile.value ? getStaticUrl(freeFile.value.file_path) : ''))
 
@@ -256,12 +256,13 @@ const handleDownload = async () => {
     router.push('/login')
     return
   }
-  if (!freeFile.value && !orderPaid.value) {
+  if (!orderPaid.value && !freeFile.value) {
     ElMessage.warning('暂无可下载的PDF文件')
     return
   }
+  const version = orderPaid.value ? 'paid' : 'free'
   try {
-    if (orderPaid.value) {
+    if (version === 'paid') {
       await ElMessageBox.confirm('确认下载高清版乐谱吗？已购买，无需积分。', '下载确认', {
         confirmButtonText: '确认下载',
         cancelButtonText: '取消',
@@ -270,7 +271,7 @@ const handleDownload = async () => {
     } else {
       const requiredPoints = sheet.value?.download_points || 0
       await ElMessageBox.confirm(
-        `确认下载该乐谱吗？\n所需积分：${requiredPoints} 积分`,
+        `确认下载免费版乐谱吗？\n所需积分：${requiredPoints} 积分`,
         '下载确认',
         { confirmButtonText: '确认下载', cancelButtonText: '取消', type: 'warning' }
       )
@@ -278,10 +279,12 @@ const handleDownload = async () => {
     downloading.value = true
     const token = localStorage.getItem('token') || ''
     const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
-    const downloadUrl = `${baseUrl}/sheet-music/${sheet.value!.id}/download?token=${encodeURIComponent(token)}`
+    const downloadUrl =
+      `${baseUrl}/sheet-music/${sheet.value!.id}/download` +
+      `?version=${version}&token=${encodeURIComponent(token)}`
     window.open(downloadUrl, '_blank')
     ElMessage.success('下载已开始，请在浏览器下载列表中查看')
-    if (!orderPaid.value) {
+    if (version === 'free') {
       setTimeout(() => userStore.fetchProfile?.(), 1000)
     }
   } catch (err: any) {

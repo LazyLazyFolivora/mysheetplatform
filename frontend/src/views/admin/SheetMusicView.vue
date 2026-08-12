@@ -372,7 +372,7 @@ const openEdit = async (row: SheetMusic) => {
       form.value = { ...form.value, tags: (detail.tags || []).map((t) => t.name) }
       syncPoints.value = (detail.page_sync || []).map((p) => ({ ...p }))
       const files = detail.files || []
-      currentFreeFile.value = files.find((f) => f.file_type !== 'paid') || null
+      currentFreeFile.value = files.find((f) => f.file_type === 'free') || null
       currentPaidFile.value = files.find((f) => f.file_type === 'paid') || null
       const audio = detail.audio?.[0]
       currentAudioUrl.value = audio ? toStaticUrl(audio.hls_url || audio.original_url) : ''
