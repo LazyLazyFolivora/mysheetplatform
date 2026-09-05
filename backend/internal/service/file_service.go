@@ -4,9 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"mime/multipart"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
+	"sync"
 
 	"go.uber.org/fx"
 	"go.uber.org/zap"
@@ -23,6 +26,7 @@ type FileService struct {
 	cfg           *config.Config
 	logger        *zap.Logger
 	db            *gorm.DB
+	transcoding   sync.Map // audioID -> struct{}，转码去重守卫
 }
 
 type FileServiceParams struct {
@@ -133,26 +137,92 @@ func (s *FileService) UploadAudio(sheetMusicID uint, file *multipart.FileHeader)
 }
 
 func (s *FileService) transcodeAudio(audioID uint, inputPath string) {
+	// 全局只转一次：同一音频并发/重复触发时，只有一个真正执行 ffmpeg
+	if _, loaded := s.transcoding.LoadOrStore(audioID, struct{}{}); loaded {
+		return
+	}
+	defer s.transcoding.Delete(audioID)
+
 	if _, err := exec.LookPath("ffmpeg"); err != nil {
 		s.logger.Warn("未找到 ffmpeg，跳过 HLS 转码", zap.Uint("audio_id", audioID))
 		return
 	}
 
 	hlsDir := filepath.Join(s.cfg.Upload.Dir, "hls", strconv.FormatUint(uint64(audioID), 10))
-	if err := pkg.TranscodeToHLS(inputPath, hlsDir); err != nil {
-		s.logger.Error("HLS 转码失败", zap.Uint("audio_id", audioID), zap.Error(err))
-		return
+	// 分片已存在（上次转码成功但回填 DB 失败 / 进程被杀），直接回填，不再重跑 ffmpeg
+	if _, err := os.Stat(filepath.Join(hlsDir, "playlist.m3u8")); err != nil {
+		if err := pkg.TranscodeToHLS(inputPath, hlsDir); err != nil {
+			s.logger.Error("HLS 转码失败", zap.Uint("audio_id", audioID), zap.Error(err))
+			return
+		}
 	}
 
+	s.updateHLSRecord(audioID, inputPath)
+	s.logger.Info("HLS 转码完成", zap.Uint("audio_id", audioID))
+}
+
+// updateHLSRecord 回填 hls_url 与时长
+func (s *FileService) updateHLSRecord(audioID uint, inputPath string) {
 	updates := map[string]interface{}{
 		"hls_url":  fmt.Sprintf("/uploads/hls/%d/playlist.m3u8", audioID),
 		"duration": pkg.ProbeDuration(inputPath),
 	}
 	if err := s.db.Model(&model.AudioFile{}).Where("id = ?", audioID).Updates(updates).Error; err != nil {
 		s.logger.Error("回填 HLS 地址失败", zap.Uint("audio_id", audioID), zap.Error(err))
+	}
+}
+
+// BackfillMissingHLS 为缺失 HLS 的历史音频补齐转码。
+// 旧数据（从 Java 迁移或上线前上传）只有 original_url，前端回退播放原文件导致慢。
+// 幂等：只处理 hls_url 为空的记录，重启后自动重试失败的项。
+func (s *FileService) BackfillMissingHLS() {
+	if _, err := exec.LookPath("ffmpeg"); err != nil {
+		s.logger.Warn("未找到 ffmpeg，跳过 HLS 补齐")
 		return
 	}
-	s.logger.Info("HLS 转码完成", zap.Uint("audio_id", audioID))
+
+	var audios []model.AudioFile
+	if err := s.db.Where("hls_url = '' OR hls_url IS NULL").Find(&audios).Error; err != nil {
+		s.logger.Error("查询待转码音频失败", zap.Error(err))
+		return
+	}
+	if len(audios) == 0 {
+		return
+	}
+
+	s.logger.Info("HLS 补齐开始", zap.Int("count", len(audios)))
+	for _, a := range audios {
+		inputPath := s.resolveUploadPath(a.OriginalURL)
+		if inputPath == "" {
+			s.logger.Warn("音频原文件地址无法解析，跳过",
+				zap.Uint("audio_id", a.ID),
+				zap.String("original_url", a.OriginalURL))
+			continue
+		}
+		if _, err := os.Stat(inputPath); err != nil {
+			s.logger.Warn("音频原文件不存在，跳过",
+				zap.Uint("audio_id", a.ID),
+				zap.String("path", inputPath))
+			continue
+		}
+		s.transcodeAudio(a.ID, inputPath)
+	}
+	s.logger.Info("HLS 补齐完成")
+}
+
+// resolveUploadPath 把 /uploads 相对 URL 转成磁盘路径，兼容缺少前缀的旧数据
+func (s *FileService) resolveUploadPath(urlPath string) string {
+	if urlPath == "" {
+		return ""
+	}
+	if strings.HasPrefix(urlPath, "/uploads/") {
+		urlPath = strings.TrimPrefix(urlPath, "/uploads/")
+	}
+	// 拒绝绝对 HTTP 地址，避免把外部链接当成本地文件
+	if strings.HasPrefix(urlPath, "http://") || strings.HasPrefix(urlPath, "https://") {
+		return ""
+	}
+	return filepath.Join(s.cfg.Upload.Dir, urlPath)
 }
 
 func (s *FileService) UploadImage(file *multipart.FileHeader) (string, error) {

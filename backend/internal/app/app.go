@@ -77,6 +77,7 @@ func New(configPath string) *fx.App {
 		fx.Invoke(migrateAndSeed),
 		fx.Invoke(setupRoutes),
 		fx.Invoke(invokeScheduler),
+		fx.Invoke(invokeHLSBackfill),
 		fx.Invoke(invokeServer),
 	)
 }
@@ -161,6 +162,16 @@ func invokeScheduler(lc fx.Lifecycle, db *gorm.DB, logger *zap.Logger) {
 	lc.Append(fx.Hook{
 		OnStop: func(ctx context.Context) error {
 			stop()
+			return nil
+		},
+	})
+}
+
+func invokeHLSBackfill(lc fx.Lifecycle, fileService *service.FileService) {
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			// 后台补齐历史音频的 HLS，避免阻塞服务启动
+			go fileService.BackfillMissingHLS()
 			return nil
 		},
 	})
