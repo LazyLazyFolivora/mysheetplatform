@@ -22,7 +22,9 @@ func (r *SheetFileRepo) FindBySheetID(sheetMusicID uint) (*model.SheetFile, erro
 
 func (r *SheetFileRepo) FindBySheetIDAndType(sheetMusicID uint, fileType string) (*model.SheetFile, error) {
 	var file model.SheetFile
-	err := r.db.Where("sheet_music_id = ? AND file_type = ?", sheetMusicID, fileType).First(&file).Error
+	err := r.db.Where("sheet_music_id = ? AND file_type = ?", sheetMusicID, fileType).
+		Order("id DESC").
+		First(&file).Error
 	return &file, err
 }
 
@@ -36,6 +38,11 @@ func (r *SheetFileRepo) ListAudioBySheetID(sheetMusicID uint) ([]model.AudioFile
 	var files []model.AudioFile
 	err := r.db.Where("sheet_music_id = ?", sheetMusicID).Order("created_at ASC").Find(&files).Error
 	return files, err
+}
+
+func (r *SheetFileRepo) SoftDeleteBySheetIDAndType(sheetMusicID uint, fileType string) error {
+	return r.db.Where("sheet_music_id = ? AND file_type = ?", sheetMusicID, fileType).
+		Delete(&model.SheetFile{}).Error
 }
 
 func (r *SheetFileRepo) Create(file *model.SheetFile) error {

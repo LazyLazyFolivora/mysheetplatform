@@ -55,7 +55,8 @@ func NewSheetHandler(p SheetHandlerParams) *SheetHandler {
 func (h *SheetHandler) RegisterRoutes(public, auth, admin *gin.RouterGroup) {
 	public.GET("/sheet-music", h.List)
 	public.GET("/sheet-music/:id", h.Detail)
-	auth.GET("/sheet-music/:id/download", h.Download)
+	auth.GET("/sheet-music/:id/download/free", h.DownloadFree)
+	auth.GET("/sheet-music/:id/download/paid", h.DownloadPaid)
 	public.GET("/tags", h.ListTags)
 	admin.POST("/sheet-music", h.Create)
 	admin.PUT("/sheet-music/:id", h.Update)
@@ -106,12 +107,27 @@ func (h *SheetHandler) Detail(c *gin.Context) {
 
 	if userIDVal, ok := c.Get("user_id"); ok {
 		if userID, ok := userIDVal.(uint); ok {
-			paid, err := h.orderRepo.HasPaidOrder(userID, uint(id))
-			if err == nil {
+			if paid, err := h.orderRepo.HasPaidOrder(userID, uint(id)); err == nil {
 				detail.IsPurchased = paid
 			}
 		}
 	}
+
+	// 详情绝不返回 PDF 直链；付费文件记录不出现在 JSON 里。
+	// 预览只保留免费版切图信息；是否有文件用 has_* 标记。
+	preview := make([]model.SheetFile, 0, len(detail.Files))
+	for _, f := range detail.Files {
+		switch f.FileType {
+		case "paid":
+			detail.HasPaidFile = true
+		case "free":
+			detail.HasFreeFile = true
+			f.FilePath = ""
+			f.FileName = ""
+			preview = append(preview, f)
+		}
+	}
+	detail.Files = preview
 
 	c.JSON(http.StatusOK, response.Success(detail))
 }
@@ -216,63 +232,23 @@ func (h *SheetHandler) Delete(c *gin.Context) {
 	c.JSON(http.StatusOK, response.Success(nil))
 }
 
-func (h *SheetHandler) Download(c *gin.Context) {
-	userIDVal, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, response.Error(401, "请先登录"))
+func (h *SheetHandler) DownloadFree(c *gin.Context) {
+	userID, sheetID, sheet, ok := h.parseDownloadContext(c)
+	if !ok {
 		return
 	}
 
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, response.Error(400, "参数错误"))
-		return
-	}
-	sheetID := uint(id)
-	userID := userIDVal.(uint)
-
-	sheet, err := h.sheetService.FindByID(sheetID)
-	if err != nil {
-		c.JSON(http.StatusNotFound, response.Error(404, "乐谱不存在"))
-		return
-	}
-
-	// 检查用户是否有已支付订单 — 有则直接返回付费高清文件
-	paid, _ := h.orderRepo.HasPaidOrder(userID, sheetID)
-	if paid {
-		file, err := h.sheetFileRepo.FindBySheetIDAndType(sheetID, "paid")
-		if err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				c.JSON(http.StatusNotFound, response.Error(404, "付费文件暂未上传"))
-				return
-			}
-			c.JSON(http.StatusInternalServerError, response.Error(500, "查询文件失败"))
-			return
-		}
-
-		if err := h.sheetFileRepo.IncrementDownload(file.ID); err != nil {
-			c.JSON(http.StatusInternalServerError, response.Error(500, "更新下载次数失败"))
-			return
-		}
-
-		diskPath := filepath.Join(h.cfg.Upload.Dir, strings.TrimPrefix(file.FilePath, "/uploads/"))
-		ext := strings.ToLower(filepath.Ext(file.FilePath))
-		downloadName := sheet.Title
-		if downloadName == "" {
-			downloadName = "sheet"
-		}
-		c.FileAttachment(diskPath, downloadName+ext)
-		return
-	}
-
-	// 免费下载：积分抵扣
 	file, err := h.sheetFileRepo.FindBySheetIDAndType(sheetID, "free")
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, response.Error(404, "该乐谱暂无可下载文件"))
+			c.JSON(http.StatusNotFound, response.Error(404, "该乐谱暂无免费版文件"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, response.Error(500, "查询文件失败"))
+		return
+	}
+	if file.FileType != "free" {
+		c.JSON(http.StatusInternalServerError, response.Error(500, "免费文件数据异常"))
 		return
 	}
 
@@ -287,33 +263,97 @@ func (h *SheetHandler) Download(c *gin.Context) {
 				return fmt.Errorf("积分不足，需要 %d 积分", requiredPoints)
 			}
 		}
-
 		if err := h.sheetFileRepo.IncrementDownload(file.ID); err != nil {
 			return fmt.Errorf("更新下载次数失败: %w", err)
 		}
-
 		record := &model.DownloadRecord{
 			UserID:       userID,
 			SheetFileID:  file.ID,
 			SheetMusicID: sheetID,
 			PointsSpent:  requiredPoints,
 		}
-		if err := h.dlRecordRepo.Create(record); err != nil {
-			return fmt.Errorf("记录下载失败: %w", err)
-		}
-
-		return nil
+		return h.dlRecordRepo.Create(record)
 	})
 	if err != nil {
 		c.JSON(http.StatusBadRequest, response.Error(400, err.Error()))
 		return
 	}
 
-	diskPath := filepath.Join(h.cfg.Upload.Dir, strings.TrimPrefix(file.FilePath, "/uploads/"))
-	ext := strings.ToLower(filepath.Ext(file.FilePath))
-	downloadName := sheet.Title
+	h.streamSheetFile(c, sheet.Title, "免费版", file.FilePath)
+}
+
+func (h *SheetHandler) DownloadPaid(c *gin.Context) {
+	userID, sheetID, sheet, ok := h.parseDownloadContext(c)
+	if !ok {
+		return
+	}
+
+	paid, err := h.orderRepo.HasPaidOrder(userID, sheetID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, response.Error(500, "查询订单失败"))
+		return
+	}
+	if !paid {
+		c.JSON(http.StatusForbidden, response.Error(403, "请先购买高清版"))
+		return
+	}
+
+	file, err := h.sheetFileRepo.FindBySheetIDAndType(sheetID, "paid")
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, response.Error(404, "付费文件暂未上传，请联系管理员重新上传高清版"))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, response.Error(500, "查询文件失败"))
+		return
+	}
+	if file.FileType != "paid" {
+		c.JSON(http.StatusInternalServerError, response.Error(500, "付费文件数据异常"))
+		return
+	}
+
+	if err := h.sheetFileRepo.IncrementDownload(file.ID); err != nil {
+		c.JSON(http.StatusInternalServerError, response.Error(500, "更新下载次数失败"))
+		return
+	}
+
+	h.streamSheetFile(c, sheet.Title, "高清版", file.FilePath)
+}
+
+func (h *SheetHandler) parseDownloadContext(c *gin.Context) (userID, sheetID uint, sheet *model.SheetMusic, ok bool) {
+	userIDVal, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, response.Error(401, "请先登录"))
+		return 0, 0, nil, false
+	}
+
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, response.Error(400, "参数错误"))
+		return 0, 0, nil, false
+	}
+
+	sheet, err = h.sheetService.FindByID(uint(id))
+	if err != nil {
+		c.JSON(http.StatusNotFound, response.Error(404, "乐谱不存在"))
+		return 0, 0, nil, false
+	}
+
+	return userIDVal.(uint), uint(id), sheet, true
+}
+
+// streamSheetFile 以附件字节流返回 PDF，不暴露静态直链。
+func (h *SheetHandler) streamSheetFile(c *gin.Context, title, edition, filePath string) {
+	diskPath := filepath.Join(h.cfg.Upload.Dir, strings.TrimPrefix(filePath, "/uploads/"))
+	ext := strings.ToLower(filepath.Ext(filePath))
+	downloadName := title
 	if downloadName == "" {
 		downloadName = "sheet"
 	}
+	if edition != "" {
+		downloadName = downloadName + "_" + edition
+	}
+	c.Header("X-Content-Type-Options", "nosniff")
+	c.Header("Cache-Control", "no-store")
 	c.FileAttachment(diskPath, downloadName+ext)
 }

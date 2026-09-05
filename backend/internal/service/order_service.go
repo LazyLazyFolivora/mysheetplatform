@@ -69,11 +69,8 @@ func (s *OrderService) CreateOrder(req *CreateOrderReq) (*model.SheetOrder, stri
 		return nil, "", errors.New("已购买该乐谱，可直接下载")
 	}
 
-	if has, _ := s.orderRepo.HasPendingOrder(req.UserID, req.SheetMusicID); has {
-		return nil, "", errors.New("已有待支付订单，请先完成支付")
-	}
-
-	orderNo := fmt.Sprintf("SHEET%d%s", req.SheetMusicID, time.Now().Format("20060102150405"))
+	// 允许反复创建待支付订单：用户取消/未付时可再点购买；只要有一笔 paid 即可解锁下载
+	orderNo := fmt.Sprintf("SHEET%d%s%03d", req.SheetMusicID, time.Now().Format("20060102150405"), time.Now().Nanosecond()%1000)
 
 	order := &model.SheetOrder{
 		OrderNo:      orderNo,

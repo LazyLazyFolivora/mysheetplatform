@@ -25,6 +25,13 @@ request.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
+    // FormData 必须由运行时自动带 boundary，禁止外部写死 Content-Type
+    if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+      if (config.headers) {
+        delete (config.headers as Record<string, unknown>)['Content-Type']
+        delete (config.headers as Record<string, unknown>)['content-type']
+      }
+    }
     return config
   },
   (error) => {

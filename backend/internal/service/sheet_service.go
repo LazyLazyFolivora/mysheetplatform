@@ -38,12 +38,14 @@ func NewSheetService(p SheetServiceParams) *SheetService {
 
 type SheetDetail struct {
 	model.SheetMusic
-	Tags         []model.Tag       `json:"tags"`
-	Files        []model.SheetFile `json:"files,omitempty"`
-	Audio        []model.AudioFile `json:"audio,omitempty"`
-	LikeCount    int64             `json:"like_count"`
-	IsLiked      bool              `json:"is_liked"`
-	IsPurchased  bool              `json:"is_purchased"`
+	Tags        []model.Tag       `json:"tags"`
+	Files       []model.SheetFile `json:"files,omitempty"`
+	Audio       []model.AudioFile `json:"audio,omitempty"`
+	LikeCount   int64             `json:"like_count"`
+	IsLiked     bool              `json:"is_liked"`
+	IsPurchased bool              `json:"is_purchased"`
+	HasFreeFile bool              `json:"has_free_file"`
+	HasPaidFile bool              `json:"has_paid_file"`
 }
 
 type SheetListReq struct {
